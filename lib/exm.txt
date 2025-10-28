@@ -1,0 +1,51 @@
+TextField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                hintText: 'New Password',
+                prefixIcon: Icon(
+                  Icons.lock,
+                  color: Color.fromRGBO(206, 212, 211, 1),
+                ),
+                suffixIcon: Icon(
+                  Icons.keyboard_hide,
+                  color: Color.fromRGBO(206, 212, 211, 1),
+                ),
+                border: OutlineInputBorder(),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: Color.fromRGBO(242, 201, 76, 1),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              "Confirm Password",
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color.fromRGBO(2, 8, 7, 1),
+              ),
+            ),
+            TextField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                hintText: 'Confirm Password',
+                prefixIcon: Icon(
+                  Icons.lock,
+                  color: Color.fromRGBO(206, 212, 211, 1),
+                ),
+                border: OutlineInputBorder(),
+                suffixIcon: Icon(
+                  Icons.keyboard_hide,
+                  color: Color.fromRGBO(206, 212, 211, 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: Color.fromRGBO(242, 201, 76, 1),
+                  ),
+                ),
+              ),
+            ),
