@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'main.dart';
 import 'register.dart';
 import 'reset.dart';
 import 'homepage.dart';
+import 'package:mob_edu/widgets/text_field.dart';
+import 'package:mob_edu/services/google_sign_in.dart';
 
 class Loginscene extends StatefulWidget {
   const Loginscene({super.key});
@@ -15,6 +16,27 @@ class Loginscene extends StatefulWidget {
 class Loginscenestate extends State<Loginscene> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _PasswordController = TextEditingController();
+  bool _loading = false;
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _loading = true);
+    final user = await GoogleSignInService.signInWithGoogle();
+    setState(() => _loading = false);
+
+    if (user != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Welcome, ${user.displayName}!")));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => MainPage()),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Google sign-in failed")));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,67 +57,28 @@ class Loginscenestate extends State<Loginscene> {
             ),
             const SizedBox(height: 8),
             Text(
-              "Hello, Welcome back to My Courses",
+              "Hello, Welcome back to your Mind",
               style: TextStyle(
                 fontSize: 14,
                 color: Color.fromRGBO(105, 123, 122, 1),
               ),
             ),
             const SizedBox(height: 32),
-            Text(
-              "Email",
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color.fromRGBO(2, 8, 7, 1),
-              ),
-            ),
-            TextField(
+
+            CustomTextField(
+              label: "Email",
+              hintText: "Enter your email",
               controller: _emailController,
+              icon: Icons.email,
               keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                hintText: 'Email',
-                prefixIcon: Icon(
-                  Icons.email,
-                  color: Color.fromRGBO(206, 212, 211, 1),
-                ),
-                border: OutlineInputBorder(),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Color.fromRGBO(242, 201, 76, 1),
-                  ),
-                ),
-              ),
             ),
             const SizedBox(height: 20),
-            Text(
-              "Password",
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color.fromRGBO(2, 8, 7, 1),
-              ),
-            ),
-            TextField(
+            CustomTextField(
+              label: "Password",
+              hintText: "Enter your password",
               controller: _PasswordController,
+              icon: Icons.email,
               keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                hintText: 'Password',
-                prefixIcon: Icon(
-                  Icons.lock,
-                  color: Color.fromRGBO(206, 212, 211, 1),
-                ),
-                suffixIcon: Icon(
-                  Icons.keyboard_hide,
-                  color: Color.fromRGBO(206, 212, 211, 1),
-                ),
-                border: OutlineInputBorder(),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Color.fromRGBO(242, 201, 76, 1),
-                  ),
-                ),
-              ),
             ),
             const SizedBox(width: 20),
             Align(
@@ -160,6 +143,37 @@ class Loginscenestate extends State<Loginscene> {
                 ),
               ),
             ),
+            const SizedBox(height: 24),
+
+            Align(
+              alignment: Alignment.center,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shadowColor: Colors.grey.shade300,
+                ),
+                onPressed: _loading ? null : _handleGoogleSignIn,
+                icon: Image.asset('assets/google_logo.png', height: 24),
+                label: _loading
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text(
+                        "Continue with Google",
+                        style: TextStyle(color: Colors.black, fontSize: 16),
+                      ),
+              ),
+            ),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

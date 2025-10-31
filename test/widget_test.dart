@@ -5,16 +5,19 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mob_edu/main.dart';
-import 'package:mob_edu/register.dart';
+import 'package:mob_edu/screens/pass_set.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(
-      const PassSet(email: "email", Name: "name", Surname: "Surname"),
+      const PassSet(
+        email: "email",
+        Name: "name",
+        Surname: "Surname",
+        isReset: false,
+      ),
     );
   });
 }

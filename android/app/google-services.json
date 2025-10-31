@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "949141340807",
+    "project_id": "mind-tracker-001",
+    "storage_bucket": "mind-tracker-001.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:949141340807:android:a17a011abfd7fe86942e22",
+        "android_client_info": {
+          "package_name": "com.example.mob_edu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKyEL0P6nGI9i7B9OPUupv-G-KcqDLaac"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
