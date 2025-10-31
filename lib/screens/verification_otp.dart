@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'register.dart';
-import 'otp_service.dart';
+import '../services/otp_service.dart';
+import 'pass_set.dart';
 
 class OtpVerificationPage extends StatefulWidget {
   final String email;
   final String Name;
   final String Surname;
+  final bool isReset;
 
   const OtpVerificationPage({
     super.key,
     required this.email,
     required this.Name,
     required this.Surname,
+    required this.isReset,
   });
 
   @override
@@ -177,6 +180,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                       context: context,
                       email: widget.email,
                       otp: otpCode,
+                      isReset: widget.isReset,
                     );
 
                     if (isVerified) {
@@ -187,6 +191,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                             email: widget.email,
                             Name: widget.Name,
                             Surname: widget.Surname,
+                            isReset: widget.isReset,
                           ),
                         ),
                       );
