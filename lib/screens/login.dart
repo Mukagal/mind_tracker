@@ -6,6 +6,7 @@ import 'reset.dart';
 import 'homepage.dart';
 import 'package:mob_edu/widgets/text_field.dart';
 import 'package:mob_edu/services/google_sign_in.dart';
+import 'chatbot.dart';
 
 class Loginscene extends StatefulWidget {
   const Loginscene({super.key});
@@ -29,7 +30,9 @@ class Loginscenestate extends State<Loginscene> {
       ).showSnackBar(SnackBar(content: Text("Welcome, ${user.displayName}!")));
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => MainPage()),
+        MaterialPageRoute(
+          builder: (context) => MainPage(email: _emailController.text),
+        ),
       );
     } else {
       ScaffoldMessenger.of(
@@ -124,17 +127,25 @@ class Loginscenestate extends State<Loginscene> {
                     }),
                   );
 
-                  final result = jsonDecode(response.body);
+                  if (response.statusCode == 200) {
+                    final data = jsonDecode(response.body);
 
-                  if (result['success'] == true) {
-                    print('✅ Login successful!');
-                    print('Welcome, ${result['user']['name']}');
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => MainPage()),
-                    );
+                    if (data['success'] == true) {
+                      print('✅ Login successful!');
+                      print('Welcome, ${data['user']['name']}');
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              MainPage(email: _emailController.text),
+                        ),
+                      );
+                    } else {
+                      print('❌ Login failed: ${data['message']}');
+                    }
                   } else {
-                    print('❌ Login failed: ${result['message']}');
+                    print('❌ Server error: ${response.statusCode}');
                   }
                 },
                 child: Text(
