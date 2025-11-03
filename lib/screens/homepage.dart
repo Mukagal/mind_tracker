@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mob_edu/main.dart';
+import 'chatbot.dart';
+import 'package:mob_edu/services/user_service.dart';
 
 class MainPage extends StatefulWidget {
-  const MainPage({super.key});
+  final String email;
+  MainPage({super.key, required this.email});
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -30,6 +33,48 @@ String _monthName(int m) {
 
 class _MainPageState extends State<MainPage> {
   bool isDarkMode = false;
+  String? name;
+  String? surname;
+  int? id;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeUser();
+  }
+
+  Future<void> _initializeUser() async {
+    var localData = await UserService.loadUserData();
+    if (localData != null) {
+      setState(() {
+        name = localData['name'];
+        surname = localData['surname'];
+        id = localData['id'];
+      });
+      print('Loaded user from file ✅');
+      return;
+    }
+
+    var data = await UserService.fetchUserData(widget.email);
+    if (data != null) {
+      await UserService.saveUserData(data);
+      setState(() {
+        name = data['name'];
+        surname = data['surname'];
+        id = data['id'];
+      });
+      print('Fetched user from backend and saved locally ✅');
+    }
+  }
+
+  Future<void> _logout() async {
+    await UserService.clearUserData();
+    setState(() {
+      name = null;
+      surname = null;
+      id = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,7 +201,7 @@ class _MainPageState extends State<MainPage> {
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
+                  children: [
                     Icon(Icons.home, size: 28),
                     Icon(Icons.bar_chart, size: 28),
                     CircleAvatar(
@@ -164,7 +209,18 @@ class _MainPageState extends State<MainPage> {
                       backgroundColor: Color(0xFF003333),
                       child: Icon(Icons.add, color: Colors.white),
                     ),
-                    Icon(Icons.chat_bubble_outline, size: 28),
+                    IconButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ChatPage(userId: id, userName: name),
+                          ),
+                        );
+                      },
+                      icon: Icon(Icons.chat),
+                    ),
                     Icon(Icons.more_horiz, size: 28),
                   ],
                 ),

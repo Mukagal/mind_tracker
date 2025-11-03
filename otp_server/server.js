@@ -4,6 +4,8 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
+require('dotenv').config();
+console.log("OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? "✅ Loaded" : "❌ Missing");
 
 const db = new sqlite3.Database('./users.db', (err) => {
   if (err) console.error(err.message);
@@ -17,6 +19,18 @@ db.run(`
     surname TEXT,
     email TEXT UNIQUE,
     password TEXT
+  )
+`);
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS conversations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    conversation_id TEXT,
+    role TEXT,
+    content TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
   )
 `);
 
@@ -34,6 +48,7 @@ const transporter = nodemailer.createTransport({
     pass: "lgzu abfs rsmp yjml",   
   },
 });
+
 
 app.post("/send-otp", async (req, res) => {
   const { email } = req.body;
@@ -274,6 +289,167 @@ app.post("/login", (req, res) => {
       res.status(500).json({ success: false, message: "Server error" });
     }
   });
+});
+
+app.get('/user', (req, res) => {
+  const email = req.query.email;
+  db.get('SELECT id, name, surname, email FROM users WHERE email = ?', [email], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    if (!row) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(row);
+  });
+});
+
+
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { message, conversationId, userId } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    const getHistory = () => {
+      return new Promise((resolve, reject) => {
+        db.all(
+          `SELECT role, content FROM conversations 
+           WHERE conversation_id = ? AND user_id = ?
+           ORDER BY timestamp ASC`,
+          [conversationId, userId],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows || []);
+          }
+        );
+      });
+    };
+
+    const history = await getHistory();
+
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are a helpful, empathetic assistant for a mind tracker app. Help users reflect on their thoughts, feelings, and mental wellbeing. Be supportive, understanding, and provide thoughtful insights.'
+      },
+      ...history,
+      {
+        role: 'user',
+        content: message
+      }
+    ];
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 500
+        
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'OpenAI API error');
+    }
+
+    const data = await response.json();
+    const aiMessage = data.choices[0].message.content;
+
+    if (userId) {
+      db.run(
+        `INSERT INTO conversations (user_id, conversation_id, role, content) VALUES (?, ?, ?, ?)`,
+        [userId, conversationId, 'user', message]
+      );
+
+      db.run(
+        `INSERT INTO conversations (user_id, conversation_id, role, content) VALUES (?, ?, ?, ?)`,
+        [userId, conversationId, 'assistant', aiMessage]
+      );
+    }
+
+    res.json({
+      message: aiMessage,
+      conversationId: conversationId
+    });
+
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get AI response',
+      details: error.message 
+    });
+  }
+});
+
+app.get('/api/conversations/:userId', (req, res) => {
+  const { userId } = req.params;
+
+  db.all(
+    `SELECT DISTINCT conversation_id, 
+     MIN(timestamp) as started_at,
+     MAX(timestamp) as last_message_at
+     FROM conversations 
+     WHERE user_id = ?
+     GROUP BY conversation_id
+     ORDER BY last_message_at DESC`,
+    [userId],
+    (err, rows) => {
+      if (err) {
+        console.error(err.message);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json({ conversations: rows || [] });
+    }
+  );
+});
+
+app.get('/api/conversations/:userId/:conversationId', (req, res) => {
+  const { userId, conversationId } = req.params;
+
+  db.all(
+    `SELECT role, content, timestamp 
+     FROM conversations 
+     WHERE user_id = ? AND conversation_id = ?
+     ORDER BY timestamp ASC`,
+    [userId, conversationId],
+    (err, rows) => {
+      if (err) {
+        console.error(err.message);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json({ messages: rows || [] });
+    }
+  );
+});
+
+app.delete('/api/conversations/:userId/:conversationId', (req, res) => {
+  const { userId, conversationId } = req.params;
+
+  db.run(
+    `DELETE FROM conversations WHERE user_id = ? AND conversation_id = ?`,
+    [userId, conversationId],
+    function(err) {
+      if (err) {
+        console.error(err.message);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json({ 
+        message: 'Conversation deleted',
+        deletedRows: this.changes 
+      });
+    }
+  );
 });
 
 const PORT = 3000;

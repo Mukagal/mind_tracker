@@ -96,7 +96,9 @@ class _PassSetState extends State<PassSet> {
                   if (success) {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => const MainPage()),
+                      MaterialPageRoute(
+                        builder: (context) => MainPage(email: widget.email),
+                      ),
                     );
                   }
                 },
