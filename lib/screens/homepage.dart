@@ -11,31 +11,13 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
-final now = DateTime.now();
-final dateText = "${_monthName(now.month)} ${now.day}";
-String _monthName(int m) {
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  return months[m - 1];
-}
-
 class _MainPageState extends State<MainPage> {
   bool isDarkMode = false;
+  bool isLoading = true;
   String? name;
   String? surname;
   int? id;
+  String? errorMessage;
 
   @override
   void initState() {
@@ -43,37 +25,88 @@ class _MainPageState extends State<MainPage> {
     _initializeUser();
   }
 
-  Future<void> _initializeUser() async {
-    var localData = await UserService.loadUserData();
-    if (localData != null) {
-      setState(() {
-        name = localData['name'];
-        surname = localData['surname'];
-        id = localData['id'];
-      });
-      print('Loaded user from file ✅');
-      return;
-    }
+  String get dateText {
+    final now = DateTime.now();
+    return "${_monthName(now.month)} ${now.day}";
+  }
 
-    var data = await UserService.fetchUserData(widget.email);
-    if (data != null) {
-      await UserService.saveUserData(data);
+  String _monthName(int m) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return months[m - 1];
+  }
+
+  Future<void> _initializeUser() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      var localData = await UserService.loadUserData();
+      if (localData != null && localData['email'] == widget.email) {
+        setState(() {
+          name = localData['name'];
+          surname = localData['surname'];
+          id = localData['id'];
+          isLoading = false;
+        });
+        print('✅ Loaded user from local file: $name $surname');
+        return;
+      }
+
+      print('🔄 Fetching user from backend for email: ${widget.email}');
+      var data = await UserService.fetchUserData(widget.email);
+
+      if (data != null) {
+        await UserService.saveUserData(data);
+        setState(() {
+          name = data['name'];
+          surname = data['surname'];
+          id = data['id'];
+          isLoading = false;
+        });
+        print('✅ Fetched and saved user: $name $surname (ID: $id)');
+      } else {
+        setState(() {
+          isLoading = false;
+          errorMessage = 'User not found for email: ${widget.email}';
+        });
+        print('❌ No user found for email: ${widget.email}');
+      }
+    } catch (e) {
       setState(() {
-        name = data['name'];
-        surname = data['surname'];
-        id = data['id'];
+        isLoading = false;
+        errorMessage = 'Error loading user: $e';
       });
-      print('Fetched user from backend and saved locally ✅');
+      print('❌ Error in _initializeUser: $e');
     }
   }
 
   Future<void> _logout() async {
-    await UserService.clearUserData();
-    setState(() {
-      name = null;
-      surname = null;
-      id = null;
-    });
+    try {
+      await UserService.clearUserData();
+      setState(() {
+        name = null;
+        surname = null;
+        id = null;
+      });
+      print('✅ User logged out');
+    } catch (e) {
+      print('❌ Error during logout: $e');
+    }
   }
 
   @override
@@ -82,6 +115,37 @@ class _MainPageState extends State<MainPage> {
         ? const Color(0xFF1E1E1E)
         : const Color.fromRGBO(246, 239, 234, 1);
     final textColor = isDarkMode ? Colors.white : Colors.black;
+    if (isLoading) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading user data...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red),
+              SizedBox(height: 16),
+              Text(errorMessage!),
+              SizedBox(height: 16),
+              ElevatedButton(onPressed: _initializeUser, child: Text('Retry')),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -131,7 +195,7 @@ class _MainPageState extends State<MainPage> {
               const SizedBox(height: 16),
 
               Text(
-                "Calm down,\nlife is not competitive",
+                "Calm down,\nlife is not competitive $name",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 22,

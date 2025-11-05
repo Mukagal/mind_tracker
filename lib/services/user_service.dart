@@ -1,46 +1,106 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UserService {
-  static Future<Map<String, dynamic>?> fetchUserData(String email) async {
-    final url = Uri.parse('http://<your-server>/user?email=$email');
-    final response = await http.get(url);
+  static const String baseUrl = 'http://localhost:3000/user';
 
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      print('Failed to fetch user data: ${response.body}');
+  static const String _userDataKey = 'user_data';
+
+  static Future<Map<String, dynamic>?> fetchUserData(String email) async {
+    try {
+      final encodedEmail = Uri.encodeComponent(email);
+      final url = Uri.parse('$baseUrl?email=$encodedEmail');
+
+      print('🔄 Fetching user data from: $url');
+
+      final response = await http
+          .get(url, headers: {'Content-Type': 'application/json'})
+          .timeout(
+            Duration(seconds: 10),
+            onTimeout: () {
+              throw Exception('Request timed out');
+            },
+          );
+
+      print('📡 Response status: ${response.statusCode}');
+      print('📡 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+
+        if (data.containsKey('name') && data.containsKey('surname')) {
+          data['email'] = email;
+          return data;
+        } else {
+          print('❌ Invalid response format: missing required fields');
+          return null;
+        }
+      } else if (response.statusCode == 404) {
+        print('❌ User not found for email: $email');
+        return null;
+      } else {
+        print(
+          '❌ Failed to fetch user data: ${response.statusCode} - ${response.body}',
+        );
+        return null;
+      }
+    } catch (e) {
+      print('❌ Error fetching user data: $e');
       return null;
     }
   }
 
-  static Future<File> _getUserFile() async {
-    final dir = await getApplicationDocumentsDirectory();
-    return File('${dir.path}/user.json');
-  }
-
   static Future<void> saveUserData(Map<String, dynamic> data) async {
-    final file = await _getUserFile();
-    await file.writeAsString(jsonEncode(data));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(data);
+      await prefs.setString(_userDataKey, jsonString);
+      print('💾 User data saved to SharedPreferences');
+    } catch (e) {
+      print('❌ Error saving user data: $e');
+      rethrow;
+    }
   }
 
   static Future<Map<String, dynamic>?> loadUserData() async {
-    final file = await _getUserFile();
-    if (!await file.exists()) return null;
-
     try {
-      final content = await file.readAsString();
-      return jsonDecode(content);
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_userDataKey);
+
+      if (jsonString == null || jsonString.isEmpty) {
+        print('📁 No user data found in SharedPreferences');
+        return null;
+      }
+
+      final data = jsonDecode(jsonString) as Map<String, dynamic>;
+      print(
+        '📁 Loaded user data from SharedPreferences: ${data['name']} ${data['surname']}',
+      );
+      return data;
     } catch (e) {
-      print('Error reading user file: $e');
+      print('❌ Error reading user data: $e');
       return null;
     }
   }
 
   static Future<void> clearUserData() async {
-    final file = await _getUserFile();
-    if (await file.exists()) await file.delete();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_userDataKey);
+      print('🗑️ User data cleared');
+    } catch (e) {
+      print('❌ Error clearing user data: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> hasUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.containsKey(_userDataKey);
+    } catch (e) {
+      return false;
+    }
   }
 }

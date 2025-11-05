@@ -293,17 +293,55 @@ app.post("/login", (req, res) => {
 
 app.get('/user', (req, res) => {
   const email = req.query.email;
+  
+  if (!email) {
+    console.log('❌ Missing email parameter');
+    return res.status(400).json({ error: 'Email parameter is required' });
+  }
+  
+  console.log(`🔍 Looking up user with email: ${email}`);
+  
   db.get('SELECT id, name, surname, email FROM users WHERE email = ?', [email], (err, row) => {
     if (err) {
-      return res.status(500).json({ error: 'Database error' });
+      console.error('❌ Database error:', err.message);
+      return res.status(500).json({ error: 'Database error', details: err.message });
     }
+    
     if (!row) {
+      console.log(`❌ User not found: ${email}`);
       return res.status(404).json({ error: 'User not found' });
     }
+    
+    console.log('✅ User found:', row);
     res.json(row);
   });
 });
 
+app.get('/test-db', (req, res) => {
+  console.log('🔧 Testing database structure');
+  
+  db.all("PRAGMA table_info(users)", [], (err, columns) => {
+    if (err) {
+      console.error('❌ Error getting table info:', err.message);
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    
+    db.get("SELECT COUNT(*) as count FROM users", [], (countErr, countResult) => {
+      if (countErr) {
+        console.error('❌ Error counting users:', countErr.message);
+        return res.status(500).json({ error: 'Database error', details: countErr.message });
+      }
+      
+      res.json({
+        database: './users.db',
+        table: 'users',
+        columns: columns.map(col => ({ name: col.name, type: col.type })),
+        row_count: countResult.count,
+        status: 'connected'
+      });
+    });
+  });
+});
 
 
 app.post('/api/chat', async (req, res) => {
