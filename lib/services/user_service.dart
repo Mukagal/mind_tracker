@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UserService {
-  static const String baseUrl = 'http://localhost:3000/user';
+  static const String baseUrl = 'https://mind-tracker.onrender.com/user';
 
   static const String _userDataKey = 'user_data';
 

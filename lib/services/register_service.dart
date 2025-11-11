@@ -10,7 +10,7 @@ class RegisterService {
     required String password,
     required BuildContext context,
   }) async {
-    final url = Uri.parse('http://localhost:3000/register');
+    final url = Uri.parse('https://mind-tracker.onrender.com/register');
 
     try {
       final response = await http.post(

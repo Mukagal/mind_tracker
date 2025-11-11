@@ -490,5 +490,4 @@ app.delete('/api/conversations/:userId/:conversationId', (req, res) => {
   );
 });
 
-const PORT = 3000;
-app.listen(PORT, 'localhost', () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, 'https://mind-tracker.onrender.com', () => console.log(`Server running on https://mind-tracker.onrender.com`));
