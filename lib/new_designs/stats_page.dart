@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mob_edu/models/day.dart';
 import 'package:mob_edu/services/day_stats.dart';
+import 'package:mob_edu/widgets/mood_entry.dart';
 
 class StatsPage extends StatefulWidget {
   const StatsPage({Key? key}) : super(key: key);
@@ -96,8 +97,70 @@ class _StatsPageState extends State<StatsPage> {
     }
   }
 
+  Future<void> _showMoodDialog(DateTime date, String timeOfDay) async {
+    // Find entry for this date
+    final entry = entries.firstWhere(
+      (e) =>
+          e.date.year == date.year &&
+          e.date.month == date.month &&
+          e.date.day == date.day,
+      orElse: () => DayEntry(
+        id: '',
+        date: date,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    int? currentValue;
+    switch (timeOfDay) {
+      case 'morning':
+        currentValue = entry.morningMood;
+        break;
+      case 'day':
+        currentValue = entry.dayMood;
+        break;
+      case 'evening':
+        currentValue = entry.eveningMood;
+        break;
+      case 'night':
+        currentValue = entry.nightMood;
+        break;
+    }
+
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) =>
+          MoodEntryDialog(timeOfDay: timeOfDay, initialValue: currentValue),
+    );
+
+    if (result != null) {
+      try {
+        await ApiService.updateMoodValue(date, timeOfDay, result);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${timeOfDay.capitalize()} mood saved: $result/10'),
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
+
+        // Reload stats
+        _loadStats();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error saving mood: $e')));
+        }
+      }
+    }
+  }
+
   Map<String, dynamic> _calculateMoodStats(String moodType) {
-    int? getModValue(DayEntry entry) {
+    int? getMoodValue(DayEntry entry) {
       switch (moodType) {
         case 'morning':
           return entry.morningMood;
@@ -113,7 +176,7 @@ class _StatsPageState extends State<StatsPage> {
     }
 
     final validMoods = entries
-        .map((e) => getModValue(e))
+        .map((e) => getMoodValue(e))
         .where((m) => m != null)
         .cast<int>()
         .toList();
@@ -290,6 +353,10 @@ class _StatsPageState extends State<StatsPage> {
                                       percentage:
                                           '(${morningStats['percentage']}%)',
                                       color: Colors.pink,
+                                      onTap: () => _showMoodDialog(
+                                        DateTime.now(),
+                                        'morning',
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -302,6 +369,10 @@ class _StatsPageState extends State<StatsPage> {
                                       percentage:
                                           '(${dayStats['percentage']}%)',
                                       color: Colors.orange,
+                                      onTap: () => _showMoodDialog(
+                                        DateTime.now(),
+                                        'day',
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -318,6 +389,10 @@ class _StatsPageState extends State<StatsPage> {
                                       percentage:
                                           '(${eveningStats['percentage']}%)',
                                       color: Colors.blue,
+                                      onTap: () => _showMoodDialog(
+                                        DateTime.now(),
+                                        'evening',
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -330,6 +405,10 @@ class _StatsPageState extends State<StatsPage> {
                                       percentage:
                                           '(${nightStats['percentage']}%)',
                                       color: Colors.purple,
+                                      onTap: () => _showMoodDialog(
+                                        DateTime.now(),
+                                        'night',
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -410,6 +489,7 @@ class StatCard extends StatelessWidget {
   final String value;
   final String percentage;
   final Color color;
+  final VoidCallback? onTap;
 
   const StatCard({
     Key? key,
@@ -418,61 +498,68 @@ class StatCard extends StatelessWidget {
     required this.value,
     required this.percentage,
     required this.color,
+    this.onTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 10, color: Colors.black54),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                percentage,
-                style: const TextStyle(fontSize: 10, color: Colors.black54),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 10, color: Colors.black54),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  percentage,
+                  style: const TextStyle(fontSize: 10, color: Colors.black54),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -561,5 +648,11 @@ class ChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant ChartPainter oldDelegate) {
     return oldDelegate.data != data;
+  }
+}
+
+extension StringExtension on String {
+  String capitalize() {
+    return "${this[0].toUpperCase()}${substring(1)}";
   }
 }

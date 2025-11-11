@@ -9,7 +9,6 @@ console.log("OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? "✅ Loaded" : "❌ 
 
 const PORT = process.env.PORT || 3000;
 
-
 const db = new sqlite3.Database('./users.db', (err) => {
   if (err) console.error(err.message);
   else console.log('Connected to SQLite database.');
@@ -36,18 +35,19 @@ db.run(`
     FOREIGN KEY (user_id) REFERENCES users(id)
   )
 `);
+
 db.run(`
-    CREATE TABLE IF NOT EXISTS day_entries (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      date TEXT UNIQUE NOT NULL,
-      morning_mood INTEGER NOT NULL CHECK(morning_mood >= 1 AND morning_mood <= 10),
-      day_mood INTEGER NOT NULL CHECK(day_mood >= 1 AND day_mood <= 10),
-      evening_mood INTEGER NOT NULL CHECK(evening_mood >= 1 AND evening_mood <= 10),
-      night_mood INTEGER NOT NULL CHECK(night_mood >= 1 AND night_mood <= 10),
-      diary_note TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    )
+  CREATE TABLE IF NOT EXISTS day_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT UNIQUE NOT NULL,
+    morning_mood INTEGER CHECK(morning_mood >= 1 AND morning_mood <= 10),
+    day_mood INTEGER CHECK(day_mood >= 1 AND day_mood <= 10),
+    evening_mood INTEGER CHECK(evening_mood >= 1 AND evening_mood <= 10),
+    night_mood INTEGER CHECK(night_mood >= 1 AND night_mood <= 10),
+    diary_note TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )
 `);
 
 const app = express();
@@ -65,6 +65,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// ============== EXISTING AUTH ENDPOINTS ==============
 
 app.post("/send-otp", async (req, res) => {
   const { email } = req.body;
@@ -333,32 +334,9 @@ app.get('/user', (req, res) => {
   });
 });
 
-app.get('/test-db', (req, res) => {
-  console.log('🔧 Testing database structure');
-  
-  db.all("PRAGMA table_info(users)", [], (err, columns) => {
-    if (err) {
-      console.error('❌ Error getting table info:', err.message);
-      return res.status(500).json({ error: 'Database error', details: err.message });
-    }
-    
-    db.get("SELECT COUNT(*) as count FROM users", [], (countErr, countResult) => {
-      if (countErr) {
-        console.error('❌ Error counting users:', countErr.message);
-        return res.status(500).json({ error: 'Database error', details: countErr.message });
-      }
-      
-      res.json({
-        database: './users.db',
-        table: 'users',
-        columns: columns.map(col => ({ name: col.name, type: col.type })),
-        row_count: countResult.count,
-        status: 'connected'
-      });
-    });
-  });
-});
+// ============== DAY ENTRIES API ==============
 
+// Get entries for date range
 app.get('/api/entries', (req, res) => {
   const { start, end } = req.query;
   
@@ -379,6 +357,7 @@ app.get('/api/entries', (req, res) => {
   );
 });
 
+// Get entry for specific date
 app.get('/api/entries/:date', (req, res) => {
   const { date } = req.params;
 
@@ -400,6 +379,7 @@ app.get('/api/entries/:date', (req, res) => {
   );
 });
 
+// Update mood value
 app.patch('/api/entries/:date/mood', (req, res) => {
   const { date } = req.params;
   const { mood_type, value } = req.body;
@@ -419,6 +399,7 @@ app.patch('/api/entries/:date/mood', (req, res) => {
 
   const now = new Date().toISOString();
 
+  // Check if entry exists
   db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (err, row) => {
     if (err) {
       console.error(err.message);
@@ -426,6 +407,7 @@ app.patch('/api/entries/:date/mood', (req, res) => {
     }
 
     if (row) {
+      // Update existing entry
       db.run(
         `UPDATE day_entries SET ${mood_type} = ?, updated_at = ? WHERE date = ?`,
         [value, now, date],
@@ -435,6 +417,7 @@ app.patch('/api/entries/:date/mood', (req, res) => {
             return res.status(500).json({ error: 'Failed to update entry' });
           }
 
+          // Return updated entry
           db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (getErr, updatedRow) => {
             if (getErr) {
               return res.status(500).json({ error: 'Database error' });
@@ -444,6 +427,7 @@ app.patch('/api/entries/:date/mood', (req, res) => {
         }
       );
     } else {
+      // Create new entry
       db.run(
         `INSERT INTO day_entries (date, ${mood_type}, created_at, updated_at) 
          VALUES (?, ?, ?, ?)`,
@@ -454,6 +438,7 @@ app.patch('/api/entries/:date/mood', (req, res) => {
             return res.status(500).json({ error: 'Failed to create entry' });
           }
 
+          // Return new entry
           db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (getErr, newRow) => {
             if (getErr) {
               return res.status(500).json({ error: 'Database error' });
@@ -466,40 +451,48 @@ app.patch('/api/entries/:date/mood', (req, res) => {
   });
 });
 
+// Update diary note
 app.patch('/api/entries/:date/diary', (req, res) => {
   const { date } = req.params;
   const { diary_note } = req.body;
 
+  console.log(`Updating diary for ${date}: "${diary_note}"`);
+
   const now = new Date().toISOString();
 
+  // Check if entry exists
   db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (err, row) => {
     if (err) {
-      console.error(err.message);
-      return res.status(500).json({ error: 'Database error' });
+      console.error('Database error:', err.message);
+      return res.status(500).json({ error: 'Database error', details: err.message });
     }
 
     if (row) {
+      // Update existing entry
       db.run(
         `UPDATE day_entries SET diary_note = ?, updated_at = ? WHERE date = ?`,
         [diary_note, now, date],
         function(updateErr) {
           if (updateErr) {
-            console.error(updateErr.message);
-            return res.status(500).json({ error: 'Failed to update diary note' });
+            console.error('Update error:', updateErr.message);
+            return res.status(500).json({ error: 'Failed to update diary note', details: updateErr.message });
           }
+          console.log('✅ Diary note updated successfully');
           res.json({ message: 'Diary note updated successfully' });
         }
       );
     } else {
+      // Create new entry with just diary note
       db.run(
         `INSERT INTO day_entries (date, diary_note, created_at, updated_at) 
          VALUES (?, ?, ?, ?)`,
         [date, diary_note, now, now],
         function(insertErr) {
           if (insertErr) {
-            console.error(insertErr.message);
-            return res.status(500).json({ error: 'Failed to create entry' });
+            console.error('Insert error:', insertErr.message);
+            return res.status(500).json({ error: 'Failed to create entry', details: insertErr.message });
           }
+          console.log('✅ Diary note created successfully');
           res.json({ message: 'Diary note created successfully' });
         }
       );
@@ -507,6 +500,7 @@ app.patch('/api/entries/:date/diary', (req, res) => {
   });
 });
 
+// ============== CHAT API ==============
 
 app.post('/api/chat', async (req, res) => {
   try {
@@ -556,7 +550,6 @@ app.post('/api/chat', async (req, res) => {
         messages: messages,
         temperature: 0.7,
         max_tokens: 500
-        
       })
     });
 
@@ -652,6 +645,32 @@ app.delete('/api/conversations/:userId/:conversationId', (req, res) => {
       });
     }
   );
+});
+
+app.get('/test-db', (req, res) => {
+  console.log('🔧 Testing database structure');
+  
+  db.all("PRAGMA table_info(users)", [], (err, columns) => {
+    if (err) {
+      console.error('❌ Error getting table info:', err.message);
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    
+    db.get("SELECT COUNT(*) as count FROM users", [], (countErr, countResult) => {
+      if (countErr) {
+        console.error('❌ Error counting users:', countErr.message);
+        return res.status(500).json({ error: 'Database error', details: countErr.message });
+      }
+      
+      res.json({
+        database: './users.db',
+        table: 'users',
+        columns: columns.map(col => ({ name: col.name, type: col.type })),
+        row_count: countResult.count,
+        status: 'connected'
+      });
+    });
+  });
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
