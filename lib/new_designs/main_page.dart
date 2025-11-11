@@ -46,11 +46,7 @@ class _MainPageState extends State<MainPage> {
       });
     } catch (e) {
       setState(() => isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error loading data: $e')));
-      }
+      print('Error loading entry: $e');
     }
   }
 
@@ -101,11 +97,20 @@ class _MainPageState extends State<MainPage> {
     try {
       final noteText = diaryItems.join('\n');
       await ApiService.updateDiaryNote(DateTime.now(), noteText);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Saved successfully'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
     } catch (e) {
+      print('Error saving note: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error saving note: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error saving: $e')));
       }
     }
   }
