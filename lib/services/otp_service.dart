@@ -10,8 +10,8 @@ class OtpService {
     required bool isReset,
   }) async {
     final endpoint = isReset
-        ? "http://localhost:3000/verify-reset-otp"
-        : "http://localhost:3000/verify-otp";
+        ? "https://mind-tracker.onrender.com/verify-reset-otp"
+        : "https://mind-tracker.onrender.com/verify-otp";
 
     try {
       final response = await http.post(
