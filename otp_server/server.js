@@ -36,6 +36,19 @@ db.run(`
     FOREIGN KEY (user_id) REFERENCES users(id)
   )
 `);
+db.run(`
+    CREATE TABLE IF NOT EXISTS day_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT UNIQUE NOT NULL,
+      morning_mood INTEGER NOT NULL CHECK(morning_mood >= 1 AND morning_mood <= 10),
+      day_mood INTEGER NOT NULL CHECK(day_mood >= 1 AND day_mood <= 10),
+      evening_mood INTEGER NOT NULL CHECK(evening_mood >= 1 AND evening_mood <= 10),
+      night_mood INTEGER NOT NULL CHECK(night_mood >= 1 AND night_mood <= 10),
+      diary_note TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+`);
 
 const app = express();
 app.use(cors());
@@ -343,6 +356,154 @@ app.get('/test-db', (req, res) => {
         status: 'connected'
       });
     });
+  });
+});
+
+app.get('/api/entries', (req, res) => {
+  const { start, end } = req.query;
+  
+  if (!start || !end) {
+    return res.status(400).json({ error: 'Start and end dates required' });
+  }
+
+  db.all(
+    `SELECT * FROM day_entries WHERE date BETWEEN ? AND ? ORDER BY date ASC`,
+    [start, end],
+    (err, rows) => {
+      if (err) {
+        console.error(err.message);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json(rows || []);
+    }
+  );
+});
+
+app.get('/api/entries/:date', (req, res) => {
+  const { date } = req.params;
+
+  db.get(
+    `SELECT * FROM day_entries WHERE date = ?`,
+    [date],
+    (err, row) => {
+      if (err) {
+        console.error(err.message);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      if (!row) {
+        return res.status(404).json({ error: 'Entry not found' });
+      }
+      
+      res.json(row);
+    }
+  );
+});
+
+app.patch('/api/entries/:date/mood', (req, res) => {
+  const { date } = req.params;
+  const { mood_type, value } = req.body;
+
+  if (!mood_type || !value) {
+    return res.status(400).json({ error: 'mood_type and value required' });
+  }
+
+  if (value < 1 || value > 10) {
+    return res.status(400).json({ error: 'Value must be between 1 and 10' });
+  }
+
+  const validMoodTypes = ['morning_mood', 'day_mood', 'evening_mood', 'night_mood'];
+  if (!validMoodTypes.includes(mood_type)) {
+    return res.status(400).json({ error: 'Invalid mood_type' });
+  }
+
+  const now = new Date().toISOString();
+
+  db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (err, row) => {
+    if (err) {
+      console.error(err.message);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (row) {
+      db.run(
+        `UPDATE day_entries SET ${mood_type} = ?, updated_at = ? WHERE date = ?`,
+        [value, now, date],
+        function(updateErr) {
+          if (updateErr) {
+            console.error(updateErr.message);
+            return res.status(500).json({ error: 'Failed to update entry' });
+          }
+
+          db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (getErr, updatedRow) => {
+            if (getErr) {
+              return res.status(500).json({ error: 'Database error' });
+            }
+            res.json(updatedRow);
+          });
+        }
+      );
+    } else {
+      db.run(
+        `INSERT INTO day_entries (date, ${mood_type}, created_at, updated_at) 
+         VALUES (?, ?, ?, ?)`,
+        [date, value, now, now],
+        function(insertErr) {
+          if (insertErr) {
+            console.error(insertErr.message);
+            return res.status(500).json({ error: 'Failed to create entry' });
+          }
+
+          db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (getErr, newRow) => {
+            if (getErr) {
+              return res.status(500).json({ error: 'Database error' });
+            }
+            res.json(newRow);
+          });
+        }
+      );
+    }
+  });
+});
+
+app.patch('/api/entries/:date/diary', (req, res) => {
+  const { date } = req.params;
+  const { diary_note } = req.body;
+
+  const now = new Date().toISOString();
+
+  db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (err, row) => {
+    if (err) {
+      console.error(err.message);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (row) {
+      db.run(
+        `UPDATE day_entries SET diary_note = ?, updated_at = ? WHERE date = ?`,
+        [diary_note, now, date],
+        function(updateErr) {
+          if (updateErr) {
+            console.error(updateErr.message);
+            return res.status(500).json({ error: 'Failed to update diary note' });
+          }
+          res.json({ message: 'Diary note updated successfully' });
+        }
+      );
+    } else {
+      db.run(
+        `INSERT INTO day_entries (date, diary_note, created_at, updated_at) 
+         VALUES (?, ?, ?, ?)`,
+        [date, diary_note, now, now],
+        function(insertErr) {
+          if (insertErr) {
+            console.error(insertErr.message);
+            return res.status(500).json({ error: 'Failed to create entry' });
+          }
+          res.json({ message: 'Diary note created successfully' });
+        }
+      );
+    }
   });
 });
 
