@@ -126,7 +126,9 @@ class _SignUpState extends State<SignUp> {
                   }
 
                   try {
-                    final url = Uri.parse('http://localhost:3000/send-otp');
+                    final url = Uri.parse(
+                      'https://mind-tracker.onrender.com/send-otp',
+                    );
                     final response = await http.post(
                       url,
                       headers: {'Content-Type': 'application/json'},
