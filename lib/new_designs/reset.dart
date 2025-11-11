@@ -73,7 +73,7 @@ class _resetscene extends State<Reset> {
 
                   try {
                     final url = Uri.parse(
-                      'http://localhost:3000/send-reset-otp',
+                      'https://mind-tracker.onrender.com/send-reset-otp',
                     );
                     final response = await http.post(
                       url,

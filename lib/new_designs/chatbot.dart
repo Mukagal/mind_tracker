@@ -29,7 +29,7 @@ class _ChatPageState extends State<ChatPage> {
   final String _conversationId = const Uuid().v4();
   bool _isLoading = false;
 
-  static const String API_URL = 'http://localhost:3000/api/chat';
+  static const String API_URL = 'https://mind-tracker.onrender.com/api/chat';
 
   @override
   void initState() {
@@ -48,7 +48,7 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://localhost:3000/api/conversations/${widget.userId}/$_conversationId',
+          'https://mind-tracker.onrender.com/api/conversations/${widget.userId}/$_conversationId',
         ),
       );
 
@@ -168,7 +168,7 @@ class _ChatPageState extends State<ChatPage> {
       try {
         await http.delete(
           Uri.parse(
-            'http://localhost:3000/api/conversations/${widget.userId}/$_conversationId',
+            'https://mind-tracker.onrender.com/api/conversations/${widget.userId}/$_conversationId',
           ),
         );
         setState(() {

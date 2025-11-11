@@ -80,7 +80,9 @@ class LoginPage extends StatelessWidget {
                           child: ElevatedButton(
                             onPressed: () async {
                               final response = await http.post(
-                                Uri.parse('http://localhost:3000/login'),
+                                Uri.parse(
+                                  'https://mind-tracker.onrender.com/login',
+                                ),
                                 headers: {'Content-Type': 'application/json'},
                                 body: jsonEncode({
                                   'email': _emailController.text.trim(),
