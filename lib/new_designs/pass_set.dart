@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mob_edu/services/register_service.dart';
 import 'package:mob_edu/widgets/gradient_background.dart';
-import 'main_page.dart';
+import 'for_nav.dart';
 import 'package:mob_edu/widgets/text_field.dart';
 import 'package:mob_edu/services/reset_service.dart';
 
@@ -156,7 +156,8 @@ class _PassSetState extends State<PassSet> {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => MainPage(),
+                                builder: (context) =>
+                                    initpage(email: widget.email),
                               ),
                             );
                           }
