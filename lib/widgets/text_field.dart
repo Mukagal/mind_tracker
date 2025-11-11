@@ -23,26 +23,37 @@ class CustomTextField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
+            color: Colors.black87,
             fontWeight: FontWeight.w500,
-            color: Color.fromRGBO(2, 8, 7, 1),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 6),
         TextField(
           controller: controller,
-          keyboardType: keyboardType,
           decoration: InputDecoration(
-            hintText: hintText,
-            prefixIcon: Icon(
-              icon,
-              color: const Color.fromRGBO(206, 212, 211, 1),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: BorderSide(color: Colors.grey.shade300),
             ),
-            border: const OutlineInputBorder(),
-            focusedBorder: const OutlineInputBorder(
-              borderSide: BorderSide(color: Color.fromRGBO(242, 201, 76, 1)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: BorderSide(
+                color: Color.fromRGBO(147, 201, 151, 1),
+                width: 3,
+              ),
             ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: BorderSide(
+                color: Color.fromRGBO(147, 201, 151, 1),
+                width: 3,
+              ),
+            ),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
         ),
       ],

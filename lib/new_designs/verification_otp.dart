@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'register.dart';
 import '../services/otp_service.dart';
 import 'pass_set.dart';
+import 'package:mob_edu/widgets/gradient_background.dart';
 
 class OtpVerificationPage extends StatefulWidget {
   final String email;
@@ -54,7 +55,9 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
+      body: GradientBackground(
+        top: -200,
+        bottom: 500,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
@@ -80,7 +83,6 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                 ),
               ),
               const SizedBox(height: 16),
-
               Text(
                 'We sent a verification code to',
                 style: GoogleFonts.poppins(fontSize: 15, color: Colors.black54),
@@ -127,7 +129,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(
-                            color: Color(0xFFFBC02D),
+                            color: Color.fromARGB(255, 255, 255, 255),
                             width: 2,
                           ),
                         ),
@@ -147,7 +149,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                         ? "0:${_secondsRemaining.toString().padLeft(2, '0')}"
                         : "00:00",
                     style: GoogleFonts.poppins(
-                      color: Colors.orange.shade700,
+                      color: const Color.fromARGB(255, 255, 255, 255),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -168,11 +170,10 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                 height: 55,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFBC02D),
+                    backgroundColor: Color(0xFF6BB8AC),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    elevation: 0,
                   ),
                   onPressed: () async {
                     final otpCode = _controllers.map((c) => c.text).join();

@@ -28,9 +28,7 @@ class _resetscene extends State<Reset> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const Loginscene(),
-                      ),
+                      MaterialPageRoute(builder: (context) => LoginPage()),
                     );
                   },
                   icon: const Icon(Icons.arrow_left, color: Colors.green),
@@ -56,13 +54,9 @@ class _resetscene extends State<Reset> {
             SizedBox(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color.fromRGBO(242, 201, 76, 1),
+                  backgroundColor: Color(0xFF6BB8AC),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    side: BorderSide(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 1,
-                    ),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 onPressed: () async {
