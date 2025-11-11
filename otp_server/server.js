@@ -7,6 +7,9 @@ const bcrypt = require('bcrypt');
 require('dotenv').config();
 console.log("OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? "✅ Loaded" : "❌ Missing");
 
+const PORT = process.env.PORT || 3000;
+
+
 const db = new sqlite3.Database('./users.db', (err) => {
   if (err) console.error(err.message);
   else console.log('Connected to SQLite database.');
@@ -490,4 +493,4 @@ app.delete('/api/conversations/:userId/:conversationId', (req, res) => {
   );
 });
 
-app.listen(PORT, 'https://mind-tracker.onrender.com', () => console.log(`Server running on https://mind-tracker.onrender.com`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
