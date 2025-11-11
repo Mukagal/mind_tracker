@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:mob_edu/screens/login.dart';
+import 'package:mob_edu/new_designs/login.dart';
 import '../main.dart';
-import 'verification_otp.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:mob_edu/widgets/text_field.dart';
+import 'package:mob_edu/widgets/gradient_background.dart';
+import 'verification_otp.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -38,11 +39,11 @@ class _SignUpState extends State<SignUp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(color: Color.fromRGBO(246, 251, 250, 1)),
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      body: GradientBackground(
+        top: -200,
+        bottom: 500,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const SizedBox(height: 20),
             Row(
@@ -108,13 +109,9 @@ class _SignUpState extends State<SignUp> {
               height: 50,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color.fromRGBO(242, 201, 76, 1),
+                  backgroundColor: Color(0xFF6BB8AC),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    side: BorderSide(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 1,
-                    ),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 onPressed: () async {
@@ -188,15 +185,13 @@ class _SignUpState extends State<SignUp> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const Loginscene(),
-                      ),
+                      MaterialPageRoute(builder: (context) => LoginPage()),
                     );
                   },
                   child: Text(
                     "Login",
                     style: TextStyle(
-                      color: Color.fromRGBO(242, 201, 76, 1),
+                      color: Color.fromARGB(255, 255, 255, 255),
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),

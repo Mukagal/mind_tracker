@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'screens/login.dart';
-import 'screens/register.dart';
-import 'firebase_options.dart';
+import 'new_designs/login.dart';
+import 'new_designs/register.dart';
+import 'package:mob_edu/widgets/gradient_background.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -127,14 +125,15 @@ class WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(color: Color.fromRGBO(246, 251, 250, 1)),
+      body: GradientBackground(
+        top: -100,
+        bottom: 500,
         child: Center(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 100),
-              Image.asset(width: 327, height: 261, "assets/logo.jpg"),
+              Image.asset(width: 327, height: 261, "assets/logo.png"),
               const SizedBox(height: 20),
               Text(
                 "Welcome To Mind Tracker",
@@ -149,13 +148,9 @@ class WelcomePage extends StatelessWidget {
               SizedBox(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color.fromRGBO(242, 201, 76, 1),
+                    backgroundColor: Color(0xFF6BB8AC),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: BorderSide(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 1,
-                      ),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   onPressed: () {
@@ -176,14 +171,12 @@ class WelcomePage extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const Loginscene(),
-                      ),
+                      MaterialPageRoute(builder: (context) => LoginPage()),
                     );
                   },
                   child: Text(
                     "Already have an account",
-                    style: TextStyle(color: Color.fromRGBO(242, 201, 76, 1)),
+                    style: TextStyle(color: Color.fromRGBO(255, 255, 255, 1)),
                   ),
                 ),
               ),

@@ -6,18 +6,10 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:mob_edu/screens/pass_set.dart';
+import 'package:mob_edu/new_designs/main_page.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const PassSet(
-        email: "email",
-        Name: "name",
-        Surname: "Surname",
-        isReset: false,
-      ),
-    );
+    await tester.pumpWidget(const MainPage());
   });
 }

@@ -1,0 +1,122 @@
+import 'package:flutter/material.dart';
+import 'main_page.dart';
+import 'package:mob_edu/new_designs/chatbot.dart';
+import 'profile_page.dart';
+import 'stats_page.dart';
+import 'add_page.dart';
+import 'package:mob_edu/services/user_service.dart';
+
+class initpage extends StatefulWidget {
+  final String email;
+
+  const initpage({Key? key, required this.email}) : super(key: key);
+
+  @override
+  State<initpage> createState() => _initpageState();
+}
+
+class _initpageState extends State<initpage> {
+  int _currentIndex = 0;
+  bool isLoading = true;
+  String? name;
+  String? surname;
+  int? id;
+  String? errorMessage;
+
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeUser();
+  }
+
+  Future<void> _initializeUser() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      var localData = await UserService.loadUserData();
+      if (localData != null && localData['email'] == widget.email) {
+        setState(() {
+          name = localData['name'];
+          surname = localData['surname'];
+          id = localData['id'];
+          isLoading = false;
+        });
+        print('✅ Loaded user from local file: $name $surname');
+        return;
+      }
+
+      print('🔄 Fetching user from backend for email: ${widget.email}');
+      var data = await UserService.fetchUserData(widget.email);
+
+      if (data != null) {
+        await UserService.saveUserData(data);
+        setState(() {
+          name = data['name'];
+          surname = data['surname'];
+          id = data['id'];
+          _pages = [
+            MainPage(),
+            StatsPage(),
+            AddPage(),
+            ChatPage(userId: id, userName: name),
+            ProfilePage(name: name, surname: surname, email: widget.email),
+          ];
+          isLoading = false;
+        });
+        print('✅ Fetched and saved user: $name $surname (ID: $id)');
+      } else {
+        setState(() {
+          isLoading = false;
+          errorMessage = 'User not found for email: ${widget.email}';
+        });
+        print('❌ No user found for email: ${widget.email}');
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        errorMessage = 'Error loading user: $e';
+      });
+      print('❌ Error in _initializeUser: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (errorMessage != null) {
+      return Scaffold(body: Center(child: Text(errorMessage!)));
+    }
+
+    return Scaffold(
+      body: _pages[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Color.fromRGBO(149, 202, 149, 1),
+        selectedItemColor: Colors.teal,
+        unselectedItemColor: Colors.grey[700],
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+        },
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Stats'),
+          BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            label: 'Chat',
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+}
