@@ -98,7 +98,6 @@ class _StatsPageState extends State<StatsPage> {
   }
 
   Future<void> _showMoodDialog(DateTime date, String timeOfDay) async {
-    // Find entry for this date
     final entry = entries.firstWhere(
       (e) =>
           e.date.year == date.year &&
@@ -147,7 +146,6 @@ class _StatsPageState extends State<StatsPage> {
           );
         }
 
-        // Reload stats
         _loadStats();
       } catch (e) {
         if (mounted) {

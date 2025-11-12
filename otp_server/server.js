@@ -65,7 +65,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ============== EXISTING AUTH ENDPOINTS ==============
 
 app.post("/send-otp", async (req, res) => {
   const { email } = req.body;
@@ -334,9 +333,7 @@ app.get('/user', (req, res) => {
   });
 });
 
-// ============== DAY ENTRIES API ==============
 
-// Get entries for date range
 app.get('/api/entries', (req, res) => {
   const { start, end } = req.query;
   
@@ -357,7 +354,6 @@ app.get('/api/entries', (req, res) => {
   );
 });
 
-// Get entry for specific date
 app.get('/api/entries/:date', (req, res) => {
   const { date } = req.params;
 
@@ -379,70 +375,93 @@ app.get('/api/entries/:date', (req, res) => {
   );
 });
 
-// Update mood value
 app.patch('/api/entries/:date/mood', (req, res) => {
   const { date } = req.params;
   const { mood_type, value } = req.body;
 
-  if (!mood_type || !value) {
+  console.log(`Updating mood for ${date}: ${mood_type} = ${value}`);
+
+  if (!mood_type || value === undefined || value === null) {
+    console.error('❌ Missing mood_type or value');
     return res.status(400).json({ error: 'mood_type and value required' });
   }
 
   if (value < 1 || value > 10) {
+    console.error('❌ Invalid value range:', value);
     return res.status(400).json({ error: 'Value must be between 1 and 10' });
   }
 
-  const validMoodTypes = ['morning_mood', 'day_mood', 'evening_mood', 'night_mood'];
-  if (!validMoodTypes.includes(mood_type)) {
+  const moodTypeMap = {
+    'morning': 'morning_mood',
+    'day': 'day_mood',
+    'evening': 'evening_mood',
+    'night': 'night_mood',
+    'morning_mood': 'morning_mood',
+    'day_mood': 'day_mood',
+    'evening_mood': 'evening_mood',
+    'night_mood': 'night_mood'
+  };
+
+  const dbMoodType = moodTypeMap[mood_type];
+  
+  if (!dbMoodType) {
+    console.error('❌ Invalid mood_type:', mood_type);
     return res.status(400).json({ error: 'Invalid mood_type' });
   }
 
+  console.log(`Mapped mood_type: ${mood_type} -> ${dbMoodType}`);
+
   const now = new Date().toISOString();
 
-  // Check if entry exists
   db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (err, row) => {
     if (err) {
-      console.error(err.message);
-      return res.status(500).json({ error: 'Database error' });
+      console.error('❌ Database error:', err.message);
+      return res.status(500).json({ error: 'Database error', details: err.message });
     }
 
     if (row) {
-      // Update existing entry
+      console.log(`Updating existing entry for ${date}`);
       db.run(
-        `UPDATE day_entries SET ${mood_type} = ?, updated_at = ? WHERE date = ?`,
+        `UPDATE day_entries SET ${dbMoodType} = ?, updated_at = ? WHERE date = ?`,
         [value, now, date],
         function(updateErr) {
           if (updateErr) {
-            console.error(updateErr.message);
-            return res.status(500).json({ error: 'Failed to update entry' });
+            console.error('❌ Update error:', updateErr.message);
+            return res.status(500).json({ error: 'Failed to update entry', details: updateErr.message });
           }
 
-          // Return updated entry
+          console.log(`✅ Updated ${dbMoodType} successfully`);
+
           db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (getErr, updatedRow) => {
             if (getErr) {
-              return res.status(500).json({ error: 'Database error' });
+              console.error('❌ Error fetching updated row:', getErr.message);
+              return res.status(500).json({ error: 'Database error', details: getErr.message });
             }
+            console.log('✅ Returning updated entry:', updatedRow);
             res.json(updatedRow);
           });
         }
       );
     } else {
-      // Create new entry
+      console.log(`Creating new entry for ${date}`);
       db.run(
-        `INSERT INTO day_entries (date, ${mood_type}, created_at, updated_at) 
+        `INSERT INTO day_entries (date, ${dbMoodType}, created_at, updated_at) 
          VALUES (?, ?, ?, ?)`,
         [date, value, now, now],
         function(insertErr) {
           if (insertErr) {
-            console.error(insertErr.message);
-            return res.status(500).json({ error: 'Failed to create entry' });
+            console.error('❌ Insert error:', insertErr.message);
+            return res.status(500).json({ error: 'Failed to create entry', details: insertErr.message });
           }
 
-          // Return new entry
+          console.log(`✅ Created new entry with ${dbMoodType}`);
+
           db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (getErr, newRow) => {
             if (getErr) {
-              return res.status(500).json({ error: 'Database error' });
+              console.error('❌ Error fetching new row:', getErr.message);
+              return res.status(500).json({ error: 'Database error', details: getErr.message });
             }
+            console.log('✅ Returning new entry:', newRow);
             res.json(newRow);
           });
         }
@@ -451,7 +470,6 @@ app.patch('/api/entries/:date/mood', (req, res) => {
   });
 });
 
-// Update diary note
 app.patch('/api/entries/:date/diary', (req, res) => {
   const { date } = req.params;
   const { diary_note } = req.body;
@@ -460,7 +478,6 @@ app.patch('/api/entries/:date/diary', (req, res) => {
 
   const now = new Date().toISOString();
 
-  // Check if entry exists
   db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (err, row) => {
     if (err) {
       console.error('Database error:', err.message);
@@ -468,7 +485,6 @@ app.patch('/api/entries/:date/diary', (req, res) => {
     }
 
     if (row) {
-      // Update existing entry
       db.run(
         `UPDATE day_entries SET diary_note = ?, updated_at = ? WHERE date = ?`,
         [diary_note, now, date],
@@ -482,7 +498,6 @@ app.patch('/api/entries/:date/diary', (req, res) => {
         }
       );
     } else {
-      // Create new entry with just diary note
       db.run(
         `INSERT INTO day_entries (date, diary_note, created_at, updated_at) 
          VALUES (?, ?, ?, ?)`,
@@ -500,7 +515,6 @@ app.patch('/api/entries/:date/diary', (req, res) => {
   });
 });
 
-// ============== CHAT API ==============
 
 app.post('/api/chat', async (req, res) => {
   try {
