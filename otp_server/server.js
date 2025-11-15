@@ -6,12 +6,29 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 console.log("OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? "✅ Loaded" : "❌ Missing");
+const ZEN_QUOTES_URL = "https://zenquotes.io/api/random";
+const QUOTABLE_URL = "https://api.quotable.io/random?tags=inspirational";
+const QUOTESLATE_URL = "https://quoteslate.vercel.app/api/quotes/random";
+
 
 const PORT = process.env.PORT || 3000;
 
 const db = new sqlite3.Database('./users.db', (err) => {
   if (err) console.error(err.message);
   else console.log('Connected to SQLite database.');
+});
+app.get("/mental-health-quote", async (req, res) => {
+  try {
+    const response = await fetch(ZEN_QUOTES_URL);
+    const data = await response.json();
+
+    const quote = data[0]?.q || data.content;
+    const author = data[0]?.a || data.author;
+
+    res.json({ quote, author });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch quote" });
+  }
 });
 
 db.run(`
