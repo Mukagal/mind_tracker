@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:mob_edu/config.dart';
 
 class OtpService {
   static Future<bool> verifyOtp({
@@ -10,8 +11,8 @@ class OtpService {
     required bool isReset,
   }) async {
     final endpoint = isReset
-        ? "https://mind-tracker.onrender.com/verify-reset-otp"
-        : "https://mind-tracker.onrender.com/verify-otp";
+        ? "$baseUrl/verify-reset-otp"
+        : "$baseUrl/verify-otp";
 
     try {
       final response = await http.post(

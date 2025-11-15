@@ -4,6 +4,7 @@ import 'package:mob_edu/widgets/text_field.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'for_nav.dart';
+import 'package:mob_edu/config.dart';
 
 class LoginPage extends StatelessWidget {
   final TextEditingController _emailController = TextEditingController();
@@ -23,19 +24,10 @@ class LoginPage extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Welcome to',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.black87,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
                   Image.asset(
                     "assets/logo.png",
-                    width: 320,
-                    height: 320,
+                    width: 200,
+                    height: 200,
                     fit: BoxFit.contain,
                   ),
 
@@ -80,9 +72,7 @@ class LoginPage extends StatelessWidget {
                           child: ElevatedButton(
                             onPressed: () async {
                               final response = await http.post(
-                                Uri.parse(
-                                  'https://mind-tracker.onrender.com/login',
-                                ),
+                                Uri.parse('$baseUrl/login'),
                                 headers: {'Content-Type': 'application/json'},
                                 body: jsonEncode({
                                   'email': _emailController.text.trim(),

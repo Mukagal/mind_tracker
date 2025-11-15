@@ -22,13 +22,21 @@ class _initpageState extends State<initpage> {
   String? surname;
   int? id;
   String? errorMessage;
+  late List<Widget> _pages;
 
-  late final List<Widget> _pages;
-
+  @override
   @override
   void initState() {
     super.initState();
-    _initializeUser();
+    _pages = List.generate(
+      5,
+      (index) => const Center(child: CircularProgressIndicator()),
+    );
+    initApp();
+  }
+
+  Future<void> initApp() async {
+    await _initializeUser();
   }
 
   Future<void> _initializeUser() async {
@@ -39,13 +47,24 @@ class _initpageState extends State<initpage> {
 
     try {
       var localData = await UserService.loadUserData();
+
       if (localData != null && localData['email'] == widget.email) {
+        name = localData['name'];
+        surname = localData['surname'];
+        id = localData['id'];
+
+        _pages = [
+          MainPage(),
+          StatsPage(),
+          AddPage(),
+          ChatPage(userId: id, userName: name),
+          ProfilePage(name: name, surname: surname, email: widget.email),
+        ];
+
         setState(() {
-          name = localData['name'];
-          surname = localData['surname'];
-          id = localData['id'];
           isLoading = false;
         });
+
         print('✅ Loaded user from local file: $name $surname');
         return;
       }
@@ -55,33 +74,35 @@ class _initpageState extends State<initpage> {
 
       if (data != null) {
         await UserService.saveUserData(data);
+
+        name = data['name'];
+        surname = data['surname'];
+        id = data['id'];
+
+        _pages = [
+          MainPage(),
+          StatsPage(),
+          AddPage(),
+          ChatPage(userId: id, userName: name),
+          ProfilePage(name: name, surname: surname, email: widget.email),
+        ];
+
         setState(() {
-          name = data['name'];
-          surname = data['surname'];
-          id = data['id'];
-          _pages = [
-            MainPage(),
-            StatsPage(),
-            AddPage(),
-            ChatPage(userId: id, userName: name),
-            ProfilePage(name: name, surname: surname, email: widget.email),
-          ];
           isLoading = false;
         });
+
         print('✅ Fetched and saved user: $name $surname (ID: $id)');
       } else {
         setState(() {
           isLoading = false;
           errorMessage = 'User not found for email: ${widget.email}';
         });
-        print('❌ No user found for email: ${widget.email}');
       }
     } catch (e) {
       setState(() {
         isLoading = false;
         errorMessage = 'Error loading user: $e';
       });
-      print('❌ Error in _initializeUser: $e');
     }
   }
 
@@ -104,8 +125,11 @@ class _initpageState extends State<initpage> {
         selectedItemColor: Colors.teal,
         unselectedItemColor: Colors.grey[700],
         onTap: (index) {
-          setState(() => _currentIndex = index);
+          setState(() {
+            _currentIndex = index;
+          });
         },
+
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Stats'),

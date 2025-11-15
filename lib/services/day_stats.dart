@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:mob_edu/models/day.dart';
+import 'package:mob_edu/config.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://mind-tracker.onrender.com/api';
+  static const String baseUrlday = '$baseUrl/api';
 
   static Future<List<DayEntry>> getEntries(
     DateTime startDate,
@@ -12,15 +13,15 @@ class ApiService {
     try {
       final startStr = startDate.toIso8601String().split('T')[0];
       final endStr = endDate.toIso8601String().split('T')[0];
-      
+
       print('Fetching entries from $startStr to $endStr');
-      
+
       final response = await http.get(
-        Uri.parse('$baseUrl/entries?start=$startStr&end=$endStr'),
+        Uri.parse('$baseUrlday/entries?start=$startStr&end=$endStr'),
       );
 
       print('Get entries response: ${response.statusCode}');
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         print('Received ${data.length} entries');
@@ -39,8 +40,10 @@ class ApiService {
     try {
       final dateStr = date.toIso8601String().split('T')[0];
       print('Fetching entry for $dateStr');
-      
-      final response = await http.get(Uri.parse('$baseUrl/entries/$dateStr'));
+
+      final response = await http.get(
+        Uri.parse('$baseUrlday/entries/$dateStr'),
+      );
 
       print('Get entry response: ${response.statusCode}');
 
@@ -68,21 +71,16 @@ class ApiService {
   ) async {
     try {
       final dateStr = date.toIso8601String().split('T')[0];
-      
+
       print('Updating mood: date=$dateStr, type=$moodType, value=$value');
-      
-      final requestBody = {
-        'mood_type': moodType,
-        'value': value,
-      };
-      
+
+      final requestBody = {'mood_type': moodType, 'value': value};
+
       print('Request body: ${json.encode(requestBody)}');
-      
+
       final response = await http.patch(
-        Uri.parse('$baseUrl/entries/$dateStr/mood'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        Uri.parse('$baseUrlday/entries/$dateStr/mood'),
+        headers: {'Content-Type': 'application/json'},
         body: json.encode(requestBody),
       );
 
@@ -96,7 +94,9 @@ class ApiService {
       } else {
         final errorBody = response.body;
         print('Error updating mood: $errorBody');
-        throw Exception('Failed to update mood: ${response.statusCode} - $errorBody');
+        throw Exception(
+          'Failed to update mood: ${response.statusCode} - $errorBody',
+        );
       }
     } catch (e) {
       print('Exception in updateMoodValue: $e');
@@ -107,18 +107,14 @@ class ApiService {
   static Future<void> updateDiaryNote(DateTime date, String note) async {
     try {
       final dateStr = date.toIso8601String().split('T')[0];
-      
+
       print('Updating diary: date=$dateStr, note length=${note.length}');
-      
-      final requestBody = {
-        'diary_note': note,
-      };
-      
+
+      final requestBody = {'diary_note': note};
+
       final response = await http.patch(
-        Uri.parse('$baseUrl/entries/$dateStr/diary'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        Uri.parse('$baseUrlday/entries/$dateStr/diary'),
+        headers: {'Content-Type': 'application/json'},
         body: json.encode(requestBody),
       );
 
@@ -128,9 +124,11 @@ class ApiService {
       if (response.statusCode != 200) {
         final errorBody = response.body;
         print('Error updating diary: $errorBody');
-        throw Exception('Failed to update diary: ${response.statusCode} - $errorBody');
+        throw Exception(
+          'Failed to update diary: ${response.statusCode} - $errorBody',
+        );
       }
-      
+
       print('✅ Diary updated successfully');
     } catch (e) {
       print('Exception in updateDiaryNote: $e');

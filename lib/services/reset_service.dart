@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:mob_edu/config.dart';
 
 class ResetService {
   static Future<bool> updatePassword({
@@ -8,7 +9,7 @@ class ResetService {
     required String newPassword,
     required BuildContext context,
   }) async {
-    final url = Uri.parse('https://mind-tracker.onrender.com/reset');
+    final url = Uri.parse('$baseUrl/reset');
 
     try {
       final response = await http.post(

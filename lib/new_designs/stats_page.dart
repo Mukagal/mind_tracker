@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mob_edu/models/day.dart';
 import 'package:mob_edu/services/day_stats.dart';
 import 'package:mob_edu/widgets/mood_entry.dart';
+import 'package:mob_edu/services/app_state.dart';
 
 class StatsPage extends StatefulWidget {
   const StatsPage({Key? key}) : super(key: key);
@@ -19,6 +20,17 @@ class _StatsPageState extends State<StatsPage> {
   @override
   void initState() {
     super.initState();
+    _loadStats();
+    AppState.selectedDate.addListener(_onDateChanged);
+  }
+
+  @override
+  void dispose() {
+    AppState.selectedDate.removeListener(_onDateChanged);
+    super.dispose();
+  }
+
+  void _onDateChanged() {
     _loadStats();
   }
 
@@ -48,7 +60,7 @@ class _StatsPageState extends State<StatsPage> {
   }
 
   Map<String, DateTime> _getDateRange() {
-    final now = DateTime.now();
+    final now = AppState.selectedDate.value;
     final today = DateTime(now.year, now.month, now.day);
 
     switch (selectedPeriod) {
@@ -262,6 +274,7 @@ class _StatsPageState extends State<StatsPage> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
+                    const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -352,7 +365,7 @@ class _StatsPageState extends State<StatsPage> {
                                           '(${morningStats['percentage']}%)',
                                       color: Colors.pink,
                                       onTap: () => _showMoodDialog(
-                                        DateTime.now(),
+                                        _getDateRange()['end']!,
                                         'morning',
                                       ),
                                     ),
@@ -368,7 +381,7 @@ class _StatsPageState extends State<StatsPage> {
                                           '(${dayStats['percentage']}%)',
                                       color: Colors.orange,
                                       onTap: () => _showMoodDialog(
-                                        DateTime.now(),
+                                        _getDateRange()['end']!,
                                         'day',
                                       ),
                                     ),
@@ -388,7 +401,7 @@ class _StatsPageState extends State<StatsPage> {
                                           '(${eveningStats['percentage']}%)',
                                       color: Colors.blue,
                                       onTap: () => _showMoodDialog(
-                                        DateTime.now(),
+                                        _getDateRange()['end']!,
                                         'evening',
                                       ),
                                     ),
@@ -404,7 +417,7 @@ class _StatsPageState extends State<StatsPage> {
                                           '(${nightStats['percentage']}%)',
                                       color: Colors.purple,
                                       onTap: () => _showMoodDialog(
-                                        DateTime.now(),
+                                        _getDateRange()['end']!,
                                         'night',
                                       ),
                                     ),

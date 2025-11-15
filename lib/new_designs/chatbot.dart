@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
+import 'package:mob_edu/config.dart';
 
 class Message {
   final String text;
@@ -29,7 +30,7 @@ class _ChatPageState extends State<ChatPage> {
   final String _conversationId = const Uuid().v4();
   bool _isLoading = false;
 
-  static const String API_URL = 'https://mind-tracker.onrender.com/api/chat';
+  static const String API_URL = '$baseUrl/api/chat';
 
   @override
   void initState() {
@@ -48,7 +49,7 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final response = await http.get(
         Uri.parse(
-          'https://mind-tracker.onrender.com/api/conversations/${widget.userId}/$_conversationId',
+          '$baseUrl/api/conversations/${widget.userId}/$_conversationId',
         ),
       );
 
@@ -168,7 +169,7 @@ class _ChatPageState extends State<ChatPage> {
       try {
         await http.delete(
           Uri.parse(
-            'https://mind-tracker.onrender.com/api/conversations/${widget.userId}/$_conversationId',
+            '$baseUrl/api/conversations/${widget.userId}/$_conversationId',
           ),
         );
         setState(() {
