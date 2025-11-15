@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mob_edu/widgets/gradient_background.dart';
 import 'package:mob_edu/models/day.dart';
 import 'package:mob_edu/services/day_stats.dart';
+import 'package:mob_edu/services/quotes_service.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -13,19 +14,38 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   DayEntry? todayEntry;
   bool isLoading = true;
+  String quote = "Loading";
   final TextEditingController _diaryController = TextEditingController();
   final List<String> diaryItems = [];
+  List<String> quotes = [];
 
   @override
   void initState() {
     super.initState();
     _loadTodayEntry();
+    loadQuote();
   }
 
   @override
   void dispose() {
     _diaryController.dispose();
     super.dispose();
+  }
+
+  void loadQuote() async {
+    try {
+      if (quotes.length == 3) {
+        quotes.removeAt(0);
+      }
+      final data = await QuoteService().getMotivationalQuote();
+      setState(() {
+        quotes.add(data["quote"]!);
+      });
+    } catch (e) {
+      setState(() {
+        quote = "Failed to load quote.";
+      });
+    }
   }
 
   Future<void> _loadTodayEntry() async {
@@ -181,9 +201,11 @@ class _MainPageState extends State<MainPage> {
                               const Color(0xFF20B2AA),
                               const Color(0xFF4169E1),
                             ];
+
                             return Container(
-                              width: 100,
+                              width: 180,
                               margin: const EdgeInsets.only(right: 12),
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: colors[index],
                                 borderRadius: BorderRadius.circular(12),
@@ -194,6 +216,20 @@ class _MainPageState extends State<MainPage> {
                               ),
                               child: Stack(
                                 children: [
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      quotes[index],
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 4,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+
                                   Positioned(
                                     top: 8,
                                     right: 8,
@@ -214,6 +250,7 @@ class _MainPageState extends State<MainPage> {
                           },
                         ),
                       ),
+
                       const SizedBox(height: 24),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
