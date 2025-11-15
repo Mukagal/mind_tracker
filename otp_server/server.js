@@ -351,7 +351,6 @@ app.get('/user', (req, res) => {
   });
 });
 
-
 app.get('/api/entries', (req, res) => {
   const { start, end } = req.query;
   

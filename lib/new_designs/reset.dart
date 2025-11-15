@@ -4,6 +4,7 @@ import 'login.dart';
 import 'package:mob_edu/widgets/text_field.dart';
 import 'verification_otp.dart';
 import 'dart:convert';
+import 'package:mob_edu/config.dart';
 
 class Reset extends StatefulWidget {
   const Reset({super.key});
@@ -72,9 +73,7 @@ class _resetscene extends State<Reset> {
                   }
 
                   try {
-                    final url = Uri.parse(
-                      'https://mind-tracker.onrender.com/send-reset-otp',
-                    );
+                    final url = Uri.parse('$baseUrl/send-reset-otp');
                     final response = await http.post(
                       url,
                       headers: {'Content-Type': 'application/json'},

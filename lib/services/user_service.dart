@@ -1,16 +1,17 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mob_edu/config.dart';
 
 class UserService {
-  static const String baseUrl = 'https://mind-tracker.onrender.com/user';
+  static const String baseUrluser = '$baseUrl/user';
 
   static const String _userDataKey = 'user_data';
 
   static Future<Map<String, dynamic>?> fetchUserData(String email) async {
     try {
       final encodedEmail = Uri.encodeComponent(email);
-      final url = Uri.parse('$baseUrl?email=$encodedEmail');
+      final url = Uri.parse('$baseUrluser?email=$encodedEmail');
 
       print('🔄 Fetching user data from: $url');
 

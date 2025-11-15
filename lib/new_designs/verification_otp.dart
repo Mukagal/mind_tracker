@@ -56,13 +56,14 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: GradientBackground(
-        top: -200,
-        bottom: 500,
+        top: -300,
+        bottom: 600,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 0),
               IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded),
                 onPressed: () {
@@ -97,7 +98,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                   color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 100),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -163,7 +164,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 150),
 
               SizedBox(
                 width: double.infinity,

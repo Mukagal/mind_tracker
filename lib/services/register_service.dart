@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:mob_edu/config.dart';
 
 class RegisterService {
   static Future<bool> registerUser({
@@ -10,7 +11,7 @@ class RegisterService {
     required String password,
     required BuildContext context,
   }) async {
-    final url = Uri.parse('https://mind-tracker.onrender.com/register');
+    final url = Uri.parse('$baseUrl/register');
 
     try {
       final response = await http.post(

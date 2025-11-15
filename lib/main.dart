@@ -18,104 +18,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(),
+      home: const WelcomePage(),
       debugShowCheckedModeBanner: false,
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const WelcomePage()),
-      );
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(),
-      body: Container(
-        decoration: BoxDecoration(color: Color.fromRGBO(246, 251, 250, 1)),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 423,
-                    height: 423,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Color.fromRGBO(255, 255, 255, 1),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: 310,
-                    height: 311,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Color.fromRGBO(255, 255, 255, 1),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: 241,
-                    height: 240,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Color.fromRGBO(255, 255, 255, 1),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: 102,
-                    height: 102,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Color.fromRGBO(255, 255, 255, 1),
-                      ),
-                    ),
-                    child: Text(
-                      "ED",
-                      style: TextStyle(
-                        color: Color.fromRGBO(242, 201, 76, 1),
-                        fontSize: 38,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const Text(
-                "Empower ED",
-                style: TextStyle(
-                  color: Color.fromRGBO(2, 8, 7, 1),
-                  fontSize: 24,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -126,8 +30,8 @@ class WelcomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: GradientBackground(
-        top: -100,
-        bottom: 500,
+        top: -400,
+        bottom: 400,
         child: Center(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
