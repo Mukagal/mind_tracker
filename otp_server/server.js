@@ -17,19 +17,7 @@ const db = new sqlite3.Database('./users.db', (err) => {
   if (err) console.error(err.message);
   else console.log('Connected to SQLite database.');
 });
-app.get("/mental-health-quote", async (req, res) => {
-  try {
-    const response = await fetch(ZEN_QUOTES_URL);
-    const data = await response.json();
 
-    const quote = data[0]?.q || data.content;
-    const author = data[0]?.a || data.author;
-
-    res.json({ quote, author });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch quote" });
-  }
-});
 
 db.run(`
   CREATE TABLE IF NOT EXISTS users (
@@ -82,6 +70,19 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+app.get("/mental-health-quote", async (req, res) => {
+  try {
+    const response = await fetch(ZEN_QUOTES_URL);
+    const data = await response.json();
+
+    const quote = data[0]?.q || data.content;
+    const author = data[0]?.a || data.author;
+
+    res.json({ quote, author });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch quote" });
+  }
+});
 
 app.post("/send-otp", async (req, res) => {
   const { email } = req.body;
