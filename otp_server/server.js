@@ -97,8 +97,12 @@ app.get("/mental-health-quote/:date", async (req, res) => {
         const response = await fetch(ZEN_QUOTES_URL);
         const data = await response.json();
 
-        const quote = data[0]?.q || data.content;
-        const author = data[0]?.a || data.author;
+        const dateHash = date.split('-').reduce((acc, val) => acc + parseInt(val), 0);
+        const quotes = Array.isArray(data) ? data : [data];
+        const index = dateHash % quotes.length;
+        
+        const quote = quotes[index]?.q || quotes[index]?.content || "Stay motivated!";
+        const author = quotes[index]?.a || quotes[index]?.author || "Unknown";
 
         db.run(
           `INSERT INTO daily_quotes (date, quote, author, created_at) VALUES (?, ?, ?, datetime('now'))`,
