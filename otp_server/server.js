@@ -81,7 +81,15 @@ const transporter = nodemailer.createTransport({
 });
 
 app.get("/mental-health-quote/:date", async (req, res) => {
-  const date = req.params.date;
+  let date = req.params.date;
+  
+  const parts = date.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const month = parts[1].padStart(2, '0');
+    const day = parts[2].padStart(2, '0');
+    date = `${year}-${month}-${day}`;
+  }
 
   db.get(
     `SELECT quote, author FROM daily_quotes WHERE date = ?`,
