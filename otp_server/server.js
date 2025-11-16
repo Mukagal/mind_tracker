@@ -43,17 +43,20 @@ db.run(`
 
 db.run(`
   CREATE TABLE IF NOT EXISTS day_entries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date TEXT UNIQUE NOT NULL,
-    morning_mood INTEGER CHECK(morning_mood >= 1 AND morning_mood <= 10),
-    day_mood INTEGER CHECK(day_mood >= 1 AND day_mood <= 10),
-    evening_mood INTEGER CHECK(evening_mood >= 1 AND evening_mood <= 10),
-    night_mood INTEGER CHECK(night_mood >= 1 AND night_mood <= 10),
-    diary_note TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  )
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  date TEXT NOT NULL,
+  morning_mood INTEGER CHECK(morning_mood >= 1 AND morning_mood <= 10),
+  day_mood INTEGER CHECK(day_mood >= 1 AND day_mood <= 10),
+  evening_mood INTEGER CHECK(evening_mood >= 1 AND evening_mood <= 10),
+  night_mood INTEGER CHECK(night_mood >= 1 AND night_mood <= 10),
+  diary_note TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+)
 `);
+
 db.run(`
   CREATE TABLE IF NOT EXISTS daily_quotes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,7 +85,7 @@ const transporter = nodemailer.createTransport({
 
 app.get("/mental-health-quote/:date", async (req, res) => {
   let date = req.params.date;
-  
+
   const parts = date.split('-');
   if (parts.length === 3) {
     const year = parts[0];
@@ -95,7 +98,7 @@ app.get("/mental-health-quote/:date", async (req, res) => {
     `SELECT quote, author FROM daily_quotes WHERE date = ?`,
     [date],
     async (err, row) => {
-      if (err) return res.status(500).json({ error: "DB error" });
+      if (err) return res.status(500).json({ error: "DB error", details: err.message });
 
       if (row) {
         return res.json({ quote: row.quote, author: row.author });
@@ -103,14 +106,35 @@ app.get("/mental-health-quote/:date", async (req, res) => {
 
       try {
         const response = await fetch(ZEN_QUOTES_URL);
-        const data = await response.json();
+
+        if (!response.ok) {
+          return res.status(500).json({
+            error: "Failed to fetch quote",
+            details: `HTTP ${response.status}`
+          });
+        }
+
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseErr) {
+          return res.status(500).json({
+            error: "Invalid API response",
+            details: parseErr.message
+          });
+        }
+
+        if (!Array.isArray(data) || data.length === 0) {
+          return res.status(500).json({
+            error: "Quote API returned empty or invalid data"
+          });
+        }
 
         const dateHash = date.split('-').reduce((acc, val) => acc + parseInt(val), 0);
-        const quotes = Array.isArray(data) ? data : [data];
-        const index = dateHash % quotes.length;
-        
-        const quote = quotes[index]?.q || quotes[index]?.content || "Stay motivated!";
-        const author = quotes[index]?.a || quotes[index]?.author || "Unknown";
+        const index = dateHash % data.length;
+
+        const quote = data[index]?.q || "Stay motivated!";
+        const author = data[index]?.a || "Unknown";
 
         db.run(
           `INSERT INTO daily_quotes (date, quote, author, created_at) VALUES (?, ?, ?, datetime('now'))`,
@@ -118,12 +142,17 @@ app.get("/mental-health-quote/:date", async (req, res) => {
         );
 
         return res.json({ quote, author });
+
       } catch (error) {
-        return res.status(500).json({ error: "Failed to fetch quote" });
+        return res.status(500).json({
+          error: "Failed to fetch quote",
+          details: error.message
+        });
       }
     }
   );
 });
+
 
 
 app.post("/send-otp", async (req, res) => {
@@ -388,21 +417,25 @@ app.get('/user', (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    console.log('✅ User found:', row);
+    console.log('✅ User found:', row);  
     res.json(row);
   });
 });
 
 app.get('/api/entries', (req, res) => {
-  const { start, end } = req.query;
-  
+    const { user_id, start, end } = req.query;
+
   if (!start || !end) {
     return res.status(400).json({ error: 'Start and end dates required' });
   }
 
+
   db.all(
-    `SELECT * FROM day_entries WHERE date BETWEEN ? AND ? ORDER BY date ASC`,
-    [start, end],
+    `SELECT * FROM day_entries 
+    WHERE user_id = ? AND date BETWEEN ? AND ? 
+    ORDER BY date ASC`,
+    [user_id, start, end],
+
     (err, rows) => {
       if (err) {
         console.error(err.message);
@@ -415,10 +448,11 @@ app.get('/api/entries', (req, res) => {
 
 app.get('/api/entries/:date', (req, res) => {
   const { date } = req.params;
+  const { user_id } = req.query;
 
-  db.get(
-    `SELECT * FROM day_entries WHERE date = ?`,
-    [date],
+db.get(
+  `SELECT * FROM day_entries WHERE user_id = ? AND date = ?`,
+  [user_id, date],
     (err, row) => {
       if (err) {
         console.error(err.message);
@@ -436,8 +470,7 @@ app.get('/api/entries/:date', (req, res) => {
 
 app.patch('/api/entries/:date/mood', (req, res) => {
   const { date } = req.params;
-  const { mood_type, value } = req.body;
-
+  const { mood_type, value, user_id } = req.body;
   console.log(`Updating mood for ${date}: ${mood_type} = ${value}`);
 
   if (!mood_type || value === undefined || value === null) {
@@ -471,9 +504,8 @@ app.patch('/api/entries/:date/mood', (req, res) => {
   console.log(`Mapped mood_type: ${mood_type} -> ${dbMoodType}`);
 
   const now = new Date().toISOString();
-
-  db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (err, row) => {
-    if (err) {
+  db.get(`SELECT * FROM day_entries WHERE user_id = ? AND date = ?`, [user_id, date], (err, row) => {
+      if (err) {
       console.error('❌ Database error:', err.message);
       return res.status(500).json({ error: 'Database error', details: err.message });
     }
@@ -481,8 +513,8 @@ app.patch('/api/entries/:date/mood', (req, res) => {
     if (row) {
       console.log(`Updating existing entry for ${date}`);
       db.run(
-        `UPDATE day_entries SET ${dbMoodType} = ?, updated_at = ? WHERE date = ?`,
-        [value, now, date],
+        `UPDATE day_entries SET ${dbMoodType} = ?, updated_at = ? WHERE user_id = ? AND date = ?`,
+        [value, now, user_id, date],
         function(updateErr) {
           if (updateErr) {
             console.error('❌ Update error:', updateErr.message);
@@ -491,7 +523,7 @@ app.patch('/api/entries/:date/mood', (req, res) => {
 
           console.log(`✅ Updated ${dbMoodType} successfully`);
 
-          db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (getErr, updatedRow) => {
+          db.get(`SELECT * FROM day_entries WHERE user_id = ? AND date = ?`, [user_id, date], (getErr, updatedRow) => {
             if (getErr) {
               console.error('❌ Error fetching updated row:', getErr.message);
               return res.status(500).json({ error: 'Database error', details: getErr.message });
@@ -504,9 +536,9 @@ app.patch('/api/entries/:date/mood', (req, res) => {
     } else {
       console.log(`Creating new entry for ${date}`);
       db.run(
-        `INSERT INTO day_entries (date, ${dbMoodType}, created_at, updated_at) 
-         VALUES (?, ?, ?, ?)`,
-        [date, value, now, now],
+        `INSERT INTO day_entries (user_id, date, ${dbMoodType}, created_at, updated_at) 
+ VALUES (?, ?, ?, ?, ?)`,
+[user_id, date, value, now, now],
         function(insertErr) {
           if (insertErr) {
             console.error('❌ Insert error:', insertErr.message);
@@ -531,13 +563,14 @@ app.patch('/api/entries/:date/mood', (req, res) => {
 
 app.patch('/api/entries/:date/diary', (req, res) => {
   const { date } = req.params;
-  const { diary_note } = req.body;
+  const { diary_note, user_id } = req.body;
+
 
   console.log(`Updating diary for ${date}: "${diary_note}"`);
 
   const now = new Date().toISOString();
 
-  db.get(`SELECT * FROM day_entries WHERE date = ?`, [date], (err, row) => {
+  db.get(`SELECT * FROM day_entries WHERE user_id = ? AND date = ?`, [user_id, date], (err, row) => {
     if (err) {
       console.error('Database error:', err.message);
       return res.status(500).json({ error: 'Database error', details: err.message });
@@ -545,8 +578,8 @@ app.patch('/api/entries/:date/diary', (req, res) => {
 
     if (row) {
       db.run(
-        `UPDATE day_entries SET diary_note = ?, updated_at = ? WHERE date = ?`,
-        [diary_note, now, date],
+        `UPDATE day_entries SET diary_note = ?, updated_at = ? WHERE user_id = ? AND date = ?`,
+[diary_note, now, user_id, date],
         function(updateErr) {
           if (updateErr) {
             console.error('Update error:', updateErr.message);
@@ -558,9 +591,9 @@ app.patch('/api/entries/:date/diary', (req, res) => {
       );
     } else {
       db.run(
-        `INSERT INTO day_entries (date, diary_note, created_at, updated_at) 
-         VALUES (?, ?, ?, ?)`,
-        [date, diary_note, now, now],
+        `INSERT INTO day_entries (user_id, date, diary_note, created_at, updated_at) 
+ VALUES (?, ?, ?, ?, ?)`,
+[user_id, date, diary_note, now, now],
         function(insertErr) {
           if (insertErr) {
             console.error('Insert error:', insertErr.message);

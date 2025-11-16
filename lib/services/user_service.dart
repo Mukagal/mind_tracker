@@ -96,6 +96,20 @@ class UserService {
     }
   }
 
+  static Future<int?> getUserId() async {
+    try {
+      final userData = await loadUserData();
+      if (userData != null && userData.containsKey('id')) {
+        return userData['id'] as int;
+      }
+      print('⚠️ User ID not found in stored data');
+      return null;
+    } catch (e) {
+      print('❌ Error getting user ID: $e');
+      return null;
+    }
+  }
+
   static Future<bool> hasUserData() async {
     try {
       final prefs = await SharedPreferences.getInstance();

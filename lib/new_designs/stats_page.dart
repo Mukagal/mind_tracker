@@ -5,7 +5,8 @@ import 'package:mob_edu/widgets/mood_entry.dart';
 import 'package:mob_edu/services/app_state.dart';
 
 class StatsPage extends StatefulWidget {
-  const StatsPage({Key? key}) : super(key: key);
+  final int? userid;
+  StatsPage({Key? key, required this.userid}) : super(key: key);
 
   @override
   State<StatsPage> createState() => _StatsPageState();

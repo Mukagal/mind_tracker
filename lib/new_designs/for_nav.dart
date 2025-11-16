@@ -54,8 +54,8 @@ class _initpageState extends State<initpage> {
         id = localData['id'];
 
         _pages = [
-          MainPage(),
-          StatsPage(),
+          MainPage(id: id),
+          StatsPage(userid: id),
           AddPage(),
           ChatPage(userId: id, userName: name),
           ProfilePage(name: name, surname: surname, email: widget.email),
@@ -80,8 +80,8 @@ class _initpageState extends State<initpage> {
         id = data['id'];
 
         _pages = [
-          MainPage(),
-          StatsPage(),
+          MainPage(id: id),
+          StatsPage(userid: id),
           AddPage(),
           ChatPage(userId: id, userName: name),
           ProfilePage(name: name, surname: surname, email: widget.email),

@@ -6,7 +6,8 @@ import 'package:mob_edu/services/quotes_service.dart';
 import 'package:mob_edu/services/app_state.dart';
 
 class MainPage extends StatefulWidget {
-  const MainPage({super.key});
+  final int? id;
+  MainPage({super.key, required this.id});
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -54,7 +55,7 @@ class _MainPageState extends State<MainPage> {
       });
     } catch (e) {
       setState(() {
-        quote = "Failed to load quote.";
+        quote = "Error: $e";
       });
     }
   }

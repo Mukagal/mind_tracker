@@ -2,22 +2,34 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:mob_edu/models/day.dart';
 import 'package:mob_edu/config.dart';
+import 'user_service.dart';
 
 class ApiService {
   static const String baseUrlday = '$baseUrl/api';
+
+  static Future<int?> _getUserId() async {
+    return await UserService.getUserId();
+  }
 
   static Future<List<DayEntry>> getEntries(
     DateTime startDate,
     DateTime endDate,
   ) async {
     try {
+      final userId = await _getUserId();
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
       final startStr = startDate.toIso8601String().split('T')[0];
       final endStr = endDate.toIso8601String().split('T')[0];
 
-      print('Fetching entries from $startStr to $endStr');
+      print('Fetching entries from $startStr to $endStr for user $userId');
 
       final response = await http.get(
-        Uri.parse('$baseUrlday/entries?start=$startStr&end=$endStr'),
+        Uri.parse(
+          '$baseUrlday/entries?user_id=$userId&start=$startStr&end=$endStr',
+        ), // ✅ Add user_id
       );
 
       print('Get entries response: ${response.statusCode}');
@@ -38,11 +50,16 @@ class ApiService {
 
   static Future<DayEntry?> getEntryForDate(DateTime date) async {
     try {
+      final userId = await _getUserId();
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
       final dateStr = date.toIso8601String().split('T')[0];
-      print('Fetching entry for $dateStr');
+      print('Fetching entry for $dateStr for user $userId');
 
       final response = await http.get(
-        Uri.parse('$baseUrlday/entries/$dateStr'),
+        Uri.parse('$baseUrlday/entries/$dateStr?user_id=$userId'),
       );
 
       print('Get entry response: ${response.statusCode}');
@@ -70,11 +87,22 @@ class ApiService {
     int value,
   ) async {
     try {
+      final userId = await _getUserId();
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
       final dateStr = date.toIso8601String().split('T')[0];
 
-      print('Updating mood: date=$dateStr, type=$moodType, value=$value');
+      print(
+        'Updating mood: date=$dateStr, type=$moodType, value=$value, user=$userId',
+      );
 
-      final requestBody = {'mood_type': moodType, 'value': value};
+      final requestBody = {
+        'mood_type': moodType,
+        'value': value,
+        'user_id': userId,
+      };
 
       print('Request body: ${json.encode(requestBody)}');
 
@@ -106,11 +134,18 @@ class ApiService {
 
   static Future<void> updateDiaryNote(DateTime date, String note) async {
     try {
+      final userId = await _getUserId();
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
       final dateStr = date.toIso8601String().split('T')[0];
 
-      print('Updating diary: date=$dateStr, note length=${note.length}');
+      print(
+        'Updating diary: date=$dateStr, note length=${note.length}, user=$userId',
+      );
 
-      final requestBody = {'diary_note': note};
+      final requestBody = {'diary_note': note, 'user_id': userId};
 
       final response = await http.patch(
         Uri.parse('$baseUrlday/entries/$dateStr/diary'),
