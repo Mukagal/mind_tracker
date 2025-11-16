@@ -46,7 +46,8 @@ class _MainPageState extends State<MainPage> {
 
       if (_currentQuoteDate == dateKey) return;
 
-      final data = await QuoteService().getMotivationalQuote();
+      final data = await QuoteService().getDailyQuote(targetDate);
+
       setState(() {
         quote = data["quote"] ?? "Stay motivated!";
         _currentQuoteDate = dateKey;
@@ -152,6 +153,38 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
+  Future<void> _showDatePicker() async {
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(Duration(days: _currentPage)),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+
+    if (selectedDate != null) {
+      _jumpToDate(selectedDate);
+    }
+  }
+
+  void _jumpToDate(DateTime targetDate) {
+    final now = DateTime.now();
+    final normalizedNow = DateTime(now.year, now.month, now.day);
+    final normalizedTarget = DateTime(
+      targetDate.year,
+      targetDate.month,
+      targetDate.day,
+    );
+
+    final daysDifference = normalizedTarget.difference(normalizedNow).inDays;
+    final targetPageIndex = 1000 + daysDifference;
+
+    _currentPage = daysDifference;
+    AppState.selectedDate.value = targetDate;
+    _loadEntryForPage(daysDifference);
+
+    _pageController.jumpToPage(targetPageIndex);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -190,13 +223,23 @@ class _MainPageState extends State<MainPage> {
         children: [
           Padding(
             padding: const EdgeInsets.all(20),
-            child: Text(
-              formattedDate,
-              style: const TextStyle(
-                fontSize: 18,
-                color: Colors.black87,
-                fontWeight: FontWeight.w500,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  formattedDate,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.calendar_today),
+                  onPressed: _showDatePicker,
+                  color: Colors.black87,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 40),

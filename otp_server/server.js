@@ -54,6 +54,16 @@ db.run(`
     updated_at TEXT NOT NULL
   )
 `);
+db.run(`
+  CREATE TABLE IF NOT EXISTS daily_quotes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT UNIQUE NOT NULL,
+    quote TEXT NOT NULL,
+    author TEXT,
+    created_at TEXT NOT NULL
+  )
+`);
+
 
 const app = express();
 app.use(cors());
@@ -70,19 +80,39 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-app.get("/mental-health-quote", async (req, res) => {
-  try {
-    const response = await fetch(ZEN_QUOTES_URL);
-    const data = await response.json();
+app.get("/mental-health-quote/:date", async (req, res) => {
+  const date = req.params.date;
 
-    const quote = data[0]?.q || data.content;
-    const author = data[0]?.a || data.author;
+  db.get(
+    `SELECT quote, author FROM daily_quotes WHERE date = ?`,
+    [date],
+    async (err, row) => {
+      if (err) return res.status(500).json({ error: "DB error" });
 
-    res.json({ quote, author });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch quote" });
-  }
+      if (row) {
+        return res.json({ quote: row.quote, author: row.author });
+      }
+
+      try {
+        const response = await fetch(ZEN_QUOTES_URL);
+        const data = await response.json();
+
+        const quote = data[0]?.q || data.content;
+        const author = data[0]?.a || data.author;
+
+        db.run(
+          `INSERT INTO daily_quotes (date, quote, author, created_at) VALUES (?, ?, ?, datetime('now'))`,
+          [date, quote, author]
+        );
+
+        return res.json({ quote, author });
+      } catch (error) {
+        return res.status(500).json({ error: "Failed to fetch quote" });
+      }
+    }
+  );
 });
+
 
 app.post("/send-otp", async (req, res) => {
   const { email } = req.body;
