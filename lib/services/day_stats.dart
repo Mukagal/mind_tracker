@@ -29,7 +29,7 @@ class ApiService {
       final response = await http.get(
         Uri.parse(
           '$baseUrlday/entries?user_id=$userId&start=$startStr&end=$endStr',
-        ), // ✅ Add user_id
+        ),
       );
 
       print('Get entries response: ${response.statusCode}');

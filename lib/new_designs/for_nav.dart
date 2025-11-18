@@ -58,7 +58,12 @@ class _initpageState extends State<initpage> {
           StatsPage(userid: id),
           AddPage(),
           ChatPage(userId: id, userName: name),
-          ProfilePage(name: name, surname: surname, email: widget.email),
+          ProfilePage(
+            id: id,
+            name: name,
+            surname: surname,
+            email: widget.email,
+          ),
         ];
 
         setState(() {
@@ -84,7 +89,12 @@ class _initpageState extends State<initpage> {
           StatsPage(userid: id),
           AddPage(),
           ChatPage(userId: id, userName: name),
-          ProfilePage(name: name, surname: surname, email: widget.email),
+          ProfilePage(
+            id: id,
+            name: name,
+            surname: surname,
+            email: widget.email,
+          ),
         ];
 
         setState(() {

@@ -43,7 +43,7 @@ class _MainPageState extends State<MainPage> {
     try {
       final targetDate = date ?? DateTime.now();
       final dateKey =
-          "${targetDate.year}-${targetDate.month}-${targetDate.day}";
+          "${targetDate.year}-${targetDate.month.toString().padLeft(2, '0')}-${targetDate.day.toString().padLeft(2, '0')}";
 
       if (_currentQuoteDate == dateKey) return;
 
@@ -54,8 +54,9 @@ class _MainPageState extends State<MainPage> {
         _currentQuoteDate = dateKey;
       });
     } catch (e) {
+      print("❌ Quote loading error: $e");
       setState(() {
-        quote = "Error: $e";
+        quote = "Could not load quote. Please try again.";
       });
     }
   }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'reset.dart';
+import 'package:mob_edu/widgets/profile.dart';
 
 class ProfilePage extends StatelessWidget {
+  final int? id;
   final String? name;
   final String? surname;
   final String? email;
@@ -11,6 +13,7 @@ class ProfilePage extends StatelessWidget {
     required this.name,
     required this.surname,
     required this.email,
+    required this.id,
   }) : super(key: key);
 
   @override
@@ -51,15 +54,8 @@ class ProfilePage extends StatelessWidget {
                     child: Column(
                       children: [
                         const SizedBox(height: 20),
-                        CircleAvatar(
-                          radius: 60,
-                          backgroundColor: Colors.white.withOpacity(0.6),
-                          child: const Icon(
-                            Icons.person,
-                            size: 60,
-                            color: Colors.black54,
-                          ),
-                        ),
+                        ProfileAvatar(userID: id),
+
                         const SizedBox(height: 40),
 
                         ProfileInfoField(label: 'Name', value: name ?? ''),

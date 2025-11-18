@@ -7,9 +7,20 @@ const bcrypt = require('bcrypt');
 require('dotenv').config();
 console.log("OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? "✅ Loaded" : "❌ Missing");
 const ZEN_QUOTES_URL = "https://zenquotes.io/api/random";
-const QUOTABLE_URL = "https://api.quotable.io/random?tags=inspirational";
-const QUOTESLATE_URL = "https://quoteslate.vercel.app/api/quotes/random";
+const multer = require("multer");
+const path = require("path");
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "uploads")); 
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `user_${req.params.id}${ext}`);
+  }
+});
+
+const upload = multer({ storage });
 
 const PORT = process.env.PORT || 3000;
 
@@ -71,6 +82,8 @@ db.run(`
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 
 let otpStore = {}; 
 let verifiedEmails = {}; 
@@ -98,7 +111,11 @@ app.get("/mental-health-quote/:date", async (req, res) => {
     `SELECT quote, author FROM daily_quotes WHERE date = ?`,
     [date],
     async (err, row) => {
-      if (err) return res.status(500).json({ error: "DB error", details: err.message });
+
+      if (err){
+        console.error("❌ DB ERROR in /mental-health-quote:", err);
+        return res.status(500).json({ error: "DB error", details: err.message });
+      } 
 
       if (row) {
         return res.json({ quote: row.quote, author: row.author });
@@ -108,6 +125,7 @@ app.get("/mental-health-quote/:date", async (req, res) => {
         const response = await fetch(ZEN_QUOTES_URL);
 
         if (!response.ok) {
+            console.error("❌ Quote API returned non-200:", response.status);
           return res.status(500).json({
             error: "Failed to fetch quote",
             details: `HTTP ${response.status}`
@@ -118,6 +136,8 @@ app.get("/mental-health-quote/:date", async (req, res) => {
         try {
           data = await response.json();
         } catch (parseErr) {
+            console.error("❌ Failed to parse quote API JSON:", parseErr);
+
           return res.status(500).json({
             error: "Invalid API response",
             details: parseErr.message
@@ -125,6 +145,8 @@ app.get("/mental-health-quote/:date", async (req, res) => {
         }
 
         if (!Array.isArray(data) || data.length === 0) {
+            console.error("❌ Quote API returned empty data:", data);
+
           return res.status(500).json({
             error: "Quote API returned empty or invalid data"
           });
@@ -144,8 +166,10 @@ app.get("/mental-health-quote/:date", async (req, res) => {
         return res.json({ quote, author });
 
       } catch (error) {
+          console.error("❌ Final catch — fetch failed:", error);
+
         return res.status(500).json({
-          error: "Failed to fetch quote",
+          error: "Failed to fetch quote" + error,
           details: error.message
         });
       }
@@ -395,6 +419,33 @@ app.post("/login", (req, res) => {
     }
   });
 });
+
+app.post("/api/upload-profile/:id", upload.single("profile"), (req, res) => {
+  const userId = req.params.id;
+  const filePath = `/uploads/${req.file.filename}`;
+
+  db.run(
+    "UPDATE users SET profile_image = ? WHERE id = ?",
+    [filePath, userId],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      res.json({ success: true, path: filePath });
+    }
+  );
+});
+
+app.get("/api/user/:id", (req, res) => {
+  const userId = req.params.id;
+  
+  db.get("SELECT profile_image FROM users WHERE id = ?", [userId], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: "User not found" });
+    
+    res.json({ profile_image: row.profile_image });
+  });
+});
+
 
 app.get('/user', (req, res) => {
   const email = req.query.email;
