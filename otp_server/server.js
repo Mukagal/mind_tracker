@@ -84,6 +84,8 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+app.use('/musics', express.static(MUSIC_DIR));
+
 
 let otpStore = {}; 
 let verifiedEmails = {}; 
@@ -828,6 +830,76 @@ app.get('/test-db', (req, res) => {
       });
     });
   });
+});
+
+const MUSIC_DIR = path.join(__dirname, 'musics'); 
+
+if (!fs.existsSync(MUSIC_DIR)) {
+  fs.mkdirSync(MUSIC_DIR, { recursive: true });
+}
+
+app.get('/api/music/list', (req, res) => {
+  try {
+    const files = fs.readdirSync(MUSIC_DIR);
+    const musicFiles = files.filter(file => {
+      const ext = path.extname(file).toLowerCase();
+      return ['.mp3', '.wav', '.m4a', '.ogg', '.aac'].includes(ext);
+    });
+
+    const musicList = musicFiles.map(file => ({
+      id: file,
+      name: path.parse(file).name,
+      filename: file,
+      url: `http://13.251.1.77:3000/musics/${encodeURIComponent(file)}`,
+      size: fs.statSync(path.join(MUSIC_DIR, file)).size
+    }));
+
+    res.json({
+      success: true,
+      count: musicList.length,
+      music: musicList
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.get('/api/music/:filename', (req, res) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join(MUSIC_DIR, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Music file not found'
+      });
+    }
+
+    const stats = fs.statSync(filePath);
+    res.json({
+      success: true,
+      music: {
+        id: filename,
+        name: path.parse(filename).name,
+        filename: filename,
+        url: `http://13.251.1.77:3000"/musics/${encodeURIComponent(filename)}`,
+        size: stats.size
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

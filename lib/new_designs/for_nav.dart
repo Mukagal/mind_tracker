@@ -56,7 +56,7 @@ class _initpageState extends State<initpage> {
         _pages = [
           MainPage(id: id),
           StatsPage(userid: id),
-          AddPage(),
+          BackgroundMusicPage(),
           ChatPage(userId: id, userName: name),
           ProfilePage(
             id: id,
@@ -87,7 +87,7 @@ class _initpageState extends State<initpage> {
         _pages = [
           MainPage(id: id),
           StatsPage(userid: id),
-          AddPage(),
+          BackgroundMusicPage(),
           ChatPage(userId: id, userName: name),
           ProfilePage(
             id: id,
@@ -143,7 +143,7 @@ class _initpageState extends State<initpage> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Stats'),
-          BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add"),
+          BottomNavigationBarItem(icon: Icon(Icons.music_note), label: "Add"),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
             label: 'Chat',

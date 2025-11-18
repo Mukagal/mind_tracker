@@ -1,102 +1,268 @@
 import 'package:flutter/material.dart';
-import 'package:mob_edu/widgets/gradient_background.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:mob_edu/config.dart';
 
-class AddPage extends StatelessWidget {
-  const AddPage({Key? key}) : super(key: key);
+class BackgroundMusicPage extends StatefulWidget {
+  const BackgroundMusicPage({Key? key}) : super(key: key);
+
+  @override
+  State<BackgroundMusicPage> createState() => _BackgroundMusicPageState();
+}
+
+class _BackgroundMusicPageState extends State<BackgroundMusicPage> {
+  List<Music> musicList = [];
+  bool isLoading = true;
+  String? errorMessage;
+  String? selectedMusicId;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool isPlaying = false;
+  String? currentPlayingId;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchMusicList();
+    _loadSelectedMusic();
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> fetchMusicList() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/music/list'));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          musicList = (data['music'] as List)
+              .map((item) => Music.fromJson(item))
+              .toList();
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          errorMessage = 'Failed to load music files';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Error connecting to server: $e';
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadSelectedMusic() async {
+    // Load from SharedPreferences or your preferred storage
+    // For now, we'll just use a simple state
+    // Add SharedPreferences package and implement if needed
+  }
+
+  Future<void> _saveSelectedMusic(String musicId) async {
+    setState(() {
+      selectedMusicId = musicId;
+    });
+    // Save to SharedPreferences or your preferred storage
+    // Add SharedPreferences package and implement if needed
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Background music set successfully!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  Future<void> _previewMusic(Music music) async {
+    try {
+      if (currentPlayingId == music.id && isPlaying) {
+        await _audioPlayer.pause();
+        setState(() {
+          isPlaying = false;
+        });
+      } else {
+        await _audioPlayer.play(UrlSource(music.url));
+        setState(() {
+          isPlaying = true;
+          currentPlayingId = music.id;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error playing music: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: GradientBackground(
-        top: -100,
-        bottom: -100,
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: EdgeInsets.all(20),
-                child: Text(
-                  'Profile',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      SizedBox(height: 20),
-                      CircleAvatar(
-                        radius: 60,
-                        backgroundColor: Colors.grey.shade300,
-                        child: Icon(
-                          Icons.person,
-                          size: 60,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      SizedBox(height: 40),
-                      ProfileInfoField(label: 'Name', value: 'Turan'),
-                      SizedBox(height: 20),
-                      ProfileInfoField(label: 'Surname', value: 'Salmanqeyev'),
-                      SizedBox(height: 20),
-                      ProfileInfoField(
-                        label: 'Email',
-                        value: '230103373@sdu.edu.kz',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+      appBar: AppBar(
+        title: const Text('Background Music Settings'),
+        backgroundColor: Colors.deepPurple,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: fetchMusicList,
           ),
-        ),
+        ],
       ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : errorMessage != null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    errorMessage!,
+                    style: const TextStyle(fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: fetchMusicList,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            )
+          : musicList.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.music_off, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No music files found',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Add music files to the server directory',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: musicList.length,
+              itemBuilder: (context, index) {
+                final music = musicList[index];
+                final isSelected = selectedMusicId == music.id;
+                final isCurrentPlaying =
+                    currentPlayingId == music.id && isPlaying;
+
+                return Card(
+                  elevation: isSelected ? 4 : 1,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  color: isSelected ? Colors.deepPurple.withOpacity(0.1) : null,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    leading: CircleAvatar(
+                      backgroundColor: isSelected
+                          ? Colors.deepPurple
+                          : Colors.grey[300],
+                      child: Icon(
+                        isSelected ? Icons.check : Icons.music_note,
+                        color: isSelected ? Colors.white : Colors.grey,
+                      ),
+                    ),
+                    title: Text(
+                      music.name,
+                      style: TextStyle(
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                    subtitle: Text(
+                      _formatFileSize(music.size),
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            isCurrentPlaying
+                                ? Icons.pause_circle_filled
+                                : Icons.play_circle_filled,
+                            color: Colors.deepPurple,
+                          ),
+                          onPressed: () => _previewMusic(music),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () => _saveSelectedMusic(music.id),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isSelected
+                                ? Colors.green
+                                : Colors.deepPurple,
+                          ),
+                          child: Text(isSelected ? 'Selected' : 'Select'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
 
-class ProfileInfoField extends StatelessWidget {
-  final String label;
-  final String value;
+class Music {
+  final String id;
+  final String name;
+  final String filename;
+  final String url;
+  final int size;
 
-  const ProfileInfoField({Key? key, required this.label, required this.value})
-    : super(key: key);
+  Music({
+    required this.id,
+    required this.name,
+    required this.filename,
+    required this.url,
+    required this.size,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.black54,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
-          ),
-        ],
-      ),
+  factory Music.fromJson(Map<String, dynamic> json) {
+    return Music(
+      id: json['id'],
+      name: json['name'],
+      filename: json['filename'],
+      url: json['url'],
+      size: json['size'],
     );
   }
 }
