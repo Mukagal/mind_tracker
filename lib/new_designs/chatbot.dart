@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import 'package:mob_edu/config.dart';
+import 'conversation_history.dart';
 
 class Message {
   final String text;
@@ -15,9 +16,14 @@ class Message {
 class ChatPage extends StatefulWidget {
   final int? userId;
   final String? userName;
+  final String? conversationId;
 
-  const ChatPage({Key? key, required this.userId, required this.userName})
-    : super(key: key);
+  const ChatPage({
+    Key? key,
+    required this.userId,
+    required this.userName,
+    this.conversationId,
+  }) : super(key: key);
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -27,7 +33,7 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Message> _messages = [];
-  final String _conversationId = const Uuid().v4();
+  late String _conversationId;
   bool _isLoading = false;
 
   static const String API_URL = '$baseUrl/api/chat';
@@ -35,6 +41,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+    _conversationId = widget.conversationId ?? const Uuid().v4();
     _loadConversationHistory();
   }
 
@@ -46,6 +53,8 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _loadConversationHistory() async {
+    if (widget.conversationId == null) return;
+
     try {
       final response = await http.get(
         Uri.parse(
@@ -175,10 +184,29 @@ class _ChatPageState extends State<ChatPage> {
         setState(() {
           _messages.clear();
         });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Conversation cleared')));
       } catch (e) {
         print('Error deleting conversation: $e');
       }
     }
+  }
+
+  void _navigateToHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ConversationHistoryPage(
+          userId: widget.userId,
+          userName: widget.userName,
+        ),
+      ),
+    ).then((_) {
+      if (widget.conversationId != null) {
+        _loadConversationHistory();
+      }
+    });
   }
 
   @override
@@ -199,6 +227,11 @@ class _ChatPageState extends State<ChatPage> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: _navigateToHistory,
+            tooltip: 'Conversation history',
+          ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
             onPressed: _deleteConversation,
