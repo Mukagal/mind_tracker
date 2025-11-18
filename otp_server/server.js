@@ -84,7 +84,6 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const fs = require('fs');
-const path = require('path');
 const MUSIC_DIR = path.join(__dirname, 'musics');
 
 
@@ -840,6 +839,24 @@ app.get('/test-db', (req, res) => {
 });
 
 
+app.use('/musics', express.static(MUSIC_DIR, {
+  setHeaders: (res, filePath) => {
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes = {
+      '.mp3': 'audio/mpeg',
+      '.wav': 'audio/wav',
+      '.m4a': 'audio/mp4',
+      '.ogg': 'audio/ogg',
+      '.aac': 'audio/aac'
+    };
+    
+    if (mimeTypes[ext]) {
+      res.setHeader('Content-Type', mimeTypes[ext]);
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+    }
+  }
+}));
 
 app.get('/api/music/list', (req, res) => {
   try {
@@ -853,7 +870,7 @@ app.get('/api/music/list', (req, res) => {
       id: file,
       name: path.parse(file).name,
       filename: file,
-      url: `http://13.251.1.77:3000/musics/${encodeURIComponent(file)}`,
+      path: `/musics/${encodeURIComponent(file)}`, 
       size: fs.statSync(path.join(MUSIC_DIR, file)).size
     }));
 
@@ -889,7 +906,7 @@ app.get('/api/music/:filename', (req, res) => {
         id: filename,
         name: path.parse(filename).name,
         filename: filename,
-        url: `http://13.251.1.77:3000"/musics/${encodeURIComponent(filename)}`,
+        path: `/musics/${encodeURIComponent(filename)}`,
         size: stats.size
       }
     });
@@ -900,6 +917,7 @@ app.get('/api/music/:filename', (req, res) => {
     });
   }
 });
+
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
