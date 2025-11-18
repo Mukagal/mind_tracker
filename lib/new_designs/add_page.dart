@@ -74,8 +74,6 @@ class _BackgroundMusicPageState extends State<BackgroundMusicPage> {
     setState(() {
       selectedMusicId = musicId;
     });
-    // Save to SharedPreferences or your preferred storage
-    // Add SharedPreferences package and implement if needed
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(

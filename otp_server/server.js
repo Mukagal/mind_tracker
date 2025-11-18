@@ -83,7 +83,14 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+const fs = require('fs');
+const path = require('path');
+const MUSIC_DIR = path.join(__dirname, 'musics');
 
+
+if (!fs.existsSync(MUSIC_DIR)) {
+  fs.mkdirSync(MUSIC_DIR, { recursive: true });
+}
 app.use('/musics', express.static(MUSIC_DIR));
 
 
@@ -832,11 +839,7 @@ app.get('/test-db', (req, res) => {
   });
 });
 
-const MUSIC_DIR = path.join(__dirname, 'musics'); 
 
-if (!fs.existsSync(MUSIC_DIR)) {
-  fs.mkdirSync(MUSIC_DIR, { recursive: true });
-}
 
 app.get('/api/music/list', (req, res) => {
   try {
