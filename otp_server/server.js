@@ -36,7 +36,8 @@ db.run(`
     name TEXT,
     surname TEXT,
     email TEXT UNIQUE,
-    password TEXT
+    password TEXT,
+    profile_image Text
   )
 `);
 
@@ -432,25 +433,24 @@ app.post("/api/upload-profile/:id", upload.single("profile"), (req, res) => {
   const userId = req.params.id;
   const filePath = `/uploads/${req.file.filename}`;
 
-  db.run(
-    "UPDATE users SET profile_image = ? WHERE id = ?",
-    [filePath, userId],
-    (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-
-      res.json({ success: true, path: filePath });
-    }
-  );
-});
-
-app.get("/api/user/:id", (req, res) => {
-  const userId = req.params.id;
-  
   db.get("SELECT profile_image FROM users WHERE id = ?", [userId], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (!row) return res.status(404).json({ error: "User not found" });
-    
-    res.json({ profile_image: row.profile_image });
+
+    if (row && row.profile_image) {
+      const oldFilePath = path.join(__dirname, row.profile_image);
+      fs.unlink(oldFilePath, (unlinkErr) => {
+        if (unlinkErr) console.log("Old file not found or already deleted");
+      });
+    }
+
+    db.run(
+      "UPDATE users SET profile_image = ? WHERE id = ?",
+      [filePath, userId],
+      (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true, path: filePath });
+      }
+    );
   });
 });
 
