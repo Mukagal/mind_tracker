@@ -62,7 +62,6 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    // Request camera permission if taking photo
     if (source == ImageSource.camera) {
       final hasPermission = await _requestCameraPermission();
       if (!hasPermission) {

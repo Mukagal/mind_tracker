@@ -26,7 +26,29 @@ class _BackgroundMusicPageState extends State<BackgroundMusicPage> {
   @override
   void initState() {
     super.initState();
+    _configureAudioPlayer();
     _initializePage();
+  }
+
+  Future<void> _configureAudioPlayer() async {
+    await _audioPlayer.setReleaseMode(ReleaseMode.stop);
+
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (mounted) {
+        setState(() {
+          isPlaying = state == PlayerState.playing;
+        });
+      }
+    });
+
+    _audioPlayer.onPlayerComplete.listen((event) {
+      if (mounted) {
+        setState(() {
+          isPlaying = false;
+          currentPlayingId = null;
+        });
+      }
+    });
   }
 
   Future<void> _initializePage() async {
@@ -169,11 +191,15 @@ class _BackgroundMusicPageState extends State<BackgroundMusicPage> {
           isPlaying = false;
         });
       } else {
-        // Stop current playback if any
         await _audioPlayer.stop();
 
-        // Play new music
-        await _audioPlayer.play(UrlSource(music.url));
+        final audioUrl = music.url;
+        debugPrint('Playing audio from: $audioUrl');
+
+        await _audioPlayer.play(
+          UrlSource(audioUrl),
+          mode: PlayerMode.mediaPlayer,
+        );
 
         setState(() {
           isPlaying = true;
@@ -181,6 +207,7 @@ class _BackgroundMusicPageState extends State<BackgroundMusicPage> {
         });
       }
     } catch (e) {
+      debugPrint('Audio playback error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
