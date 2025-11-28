@@ -23,6 +23,7 @@ class _initpageState extends State<initpage> {
   int? id;
   String? errorMessage;
   late List<Widget> _pages;
+  bool? ispremium;
 
   @override
   @override
@@ -52,6 +53,8 @@ class _initpageState extends State<initpage> {
         name = localData['name'];
         surname = localData['surname'];
         id = localData['id'];
+        ispremium = localData['is_premium'] == 1;
+        print("🔥 Premium Loaded: $ispremium");
 
         _pages = [
           MainPage(id: id),
@@ -63,6 +66,7 @@ class _initpageState extends State<initpage> {
             name: name,
             surname: surname,
             email: widget.email,
+            ispremium: ispremium,
           ),
         ];
 
@@ -83,6 +87,7 @@ class _initpageState extends State<initpage> {
         name = data['name'];
         surname = data['surname'];
         id = data['id'];
+        ispremium = data['is_premium'] == 1;
 
         _pages = [
           MainPage(id: id),
@@ -94,6 +99,7 @@ class _initpageState extends State<initpage> {
             name: name,
             surname: surname,
             email: widget.email,
+            ispremium: ispremium,
           ),
         ];
 
@@ -143,7 +149,7 @@ class _initpageState extends State<initpage> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Stats'),
-          BottomNavigationBarItem(icon: Icon(Icons.music_note), label: "Add"),
+          BottomNavigationBarItem(icon: Icon(Icons.music_note), label: "Music"),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
             label: 'Chat',

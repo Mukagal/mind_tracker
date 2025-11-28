@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'reset.dart';
 import 'package:mob_edu/widgets/profile.dart';
+import 'package:mob_edu/widgets/button.dart';
+import 'payments_screen.dart';
+import 'Game.dart';
 
 class ProfilePage extends StatelessWidget {
   final int? id;
   final String? name;
   final String? surname;
   final String? email;
+  final bool? ispremium;
 
   const ProfilePage({
     Key? key,
@@ -14,6 +18,7 @@ class ProfilePage extends StatelessWidget {
     required this.surname,
     required this.email,
     required this.id,
+    required this.ispremium,
   }) : super(key: key);
 
   @override
@@ -67,6 +72,11 @@ class ProfilePage extends StatelessWidget {
                         const SizedBox(height: 20),
                         ProfileInfoField(label: 'Email', value: email ?? ''),
                         const SizedBox(height: 40),
+                        ProfileInfoField(
+                          label: 'Premium',
+                          value: ispremium.toString(),
+                        ),
+                        const SizedBox(height: 40),
 
                         SizedBox(
                           width: double.infinity,
@@ -101,6 +111,17 @@ class ProfilePage extends StatelessWidget {
                             },
                           ),
                         ),
+                        const SizedBox(height: 40),
+                        CustomButton(
+                          label: "Change to premium",
+                          nextPage: PremiumUpgradeScreen(userId: id),
+                        ),
+                        const SizedBox(height: 40),
+                        if (ispremium == true)
+                          CustomButton(
+                            label: "Game",
+                            nextPage: BubblePopScreen(),
+                          ),
                         const SizedBox(height: 40),
                       ],
                     ),

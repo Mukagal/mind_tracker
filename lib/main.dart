@@ -2,24 +2,48 @@ import 'package:flutter/material.dart';
 import 'new_designs/login.dart';
 import 'new_designs/register.dart';
 import 'package:mob_edu/widgets/gradient_background.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:mob_edu/new_designs/payments_cancel_page.dart';
+import 'package:mob_edu/new_designs/payments_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  try {
+    await dotenv.load(fileName: ".env");
+
+    final key = dotenv.env['STRIPE_PUBLISHABLE_KEY'];
+    debugPrint("Stripe Key: $key");
+
+    if (key == null) {
+      throw Exception("Stripe publishable key not found!");
+    }
+
+    Stripe.publishableKey = key;
+    await Stripe.instance.applySettings();
+
+    runApp(MyApp());
+  } catch (e, st) {
+    debugPrint("Initialization error: $e");
+    debugPrint("$st");
+  }
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const WelcomePage(),
-      debugShowCheckedModeBanner: false,
+      title: 'Your App',
+      initialRoute: '/',
+      routes: {
+        '/': (context) => WelcomePage(),
+        '/premium-upgrade': (context) {
+          final sessionId = Uri.base.queryParameters['session_id'];
+          return PremiumUpgradeScreen(userId: 1, sessionId: sessionId);
+        },
+
+        '/payment-cancel': (context) => const PaymentCancelPage(),
+      },
     );
   }
 }

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:mob_edu/models/insights.dart';
+import 'package:mob_edu/new_designs/insight_detai_page.dart';
 import 'package:mob_edu/widgets/gradient_background.dart';
 import 'package:mob_edu/models/day.dart';
 import 'package:mob_edu/services/day_stats.dart';
 import 'package:mob_edu/services/quotes_service.dart';
 import 'package:mob_edu/services/app_state.dart';
+import 'package:mob_edu/services/insight_service.dart';
 
 class MainPage extends StatefulWidget {
   final int? id;
@@ -23,6 +26,10 @@ class _MainPageState extends State<MainPage> {
   String? _currentQuoteDate;
   final TextEditingController _diaryController = TextEditingController();
   final List<String> diaryItems = [];
+  final InsightsService _insightsService = InsightsService();
+  bool isLoadingInsights = false;
+  final Map<int, List<Insight>> _insightsCache = {};
+  List<Insight> dailyInsights = [];
 
   @override
   void initState() {
@@ -30,6 +37,7 @@ class _MainPageState extends State<MainPage> {
     _pageController = PageController(initialPage: 1000);
     loadQuote(date: DateTime.now());
     _loadEntryForPage(0);
+    _loadInsightsForPage(0);
   }
 
   @override
@@ -187,6 +195,35 @@ class _MainPageState extends State<MainPage> {
     _pageController.jumpToPage(targetPageIndex);
   }
 
+  Future<void> _loadInsightsForPage(int pageOffset) async {
+    setState(() => isLoadingInsights = true);
+    try {
+      final date = DateTime.now().add(Duration(days: pageOffset));
+
+      if (!_insightsCache.containsKey(pageOffset)) {
+        final insights = await _insightsService.getInsightsForDate(date);
+        _insightsCache[pageOffset] = insights;
+      }
+
+      setState(() {
+        dailyInsights = _insightsCache[pageOffset] ?? [];
+        isLoadingInsights = false;
+      });
+    } catch (e) {
+      setState(() => isLoadingInsights = false);
+      print('Error loading insights: $e');
+    }
+  }
+
+  void _openInsightDetail(Insight insight) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => InsightDetailPage(insight: insight),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -276,45 +313,96 @@ class _MainPageState extends State<MainPage> {
           const SizedBox(height: 12),
           SizedBox(
             height: 120,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: 3,
-              itemBuilder: (context, index) {
-                final colors = [
-                  const Color(0xFF008B8B),
-                  const Color(0xFF20B2AA),
-                  const Color(0xFF4169E1),
-                ];
-                return Container(
-                  width: 100,
-                  margin: const EdgeInsets.only(right: 12),
-                  decoration: BoxDecoration(
-                    color: colors[index],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        top: 8,
-                        right: 8,
+            child: isLoadingInsights
+                ? const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF008B8B)),
+                  )
+                : ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: dailyInsights.length,
+                    itemBuilder: (context, index) {
+                      final insight = dailyInsights[index];
+                      final colors = [
+                        const Color(0xFF008B8B),
+                        const Color(0xFF20B2AA),
+                        const Color(0xFF4169E1),
+                      ];
+                      return GestureDetector(
+                        onTap: () => _openInsightDetail(insight),
                         child: Container(
-                          width: 20,
-                          height: 20,
+                          width: 160,
+                          margin: const EdgeInsets.only(right: 12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.3),
-                            borderRadius: const BorderRadius.only(
-                              bottomLeft: Radius.circular(8),
-                            ),
+                            color: colors[index % colors.length],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      insight.title,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        height: 1.2,
+                                      ),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.3),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        insight.category,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.3),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Icon(
+                                    Icons.arrow_forward,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
           const SizedBox(height: 24),
           Padding(

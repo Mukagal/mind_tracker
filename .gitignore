@@ -47,4 +47,4 @@ node_modules/
 /otp_server/users.db
 /otp_server/uploads
 /otp_server/musics
-
+/assets

@@ -19,9 +19,7 @@ class UserService {
           .get(url, headers: {'Content-Type': 'application/json'})
           .timeout(
             Duration(seconds: 10),
-            onTimeout: () {
-              throw Exception('Request timed out');
-            },
+            onTimeout: () => throw Exception('Request timed out'),
           );
 
       print('📡 Response status: ${response.statusCode}');
@@ -30,22 +28,13 @@ class UserService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
 
-        if (data.containsKey('name') && data.containsKey('surname')) {
-          data['email'] = email;
-          return data;
-        } else {
-          print('❌ Invalid response format: missing required fields');
-          return null;
-        }
-      } else if (response.statusCode == 404) {
-        print('❌ User not found for email: $email');
-        return null;
-      } else {
-        print(
-          '❌ Failed to fetch user data: ${response.statusCode} - ${response.body}',
-        );
-        return null;
+        data['email'] = email;
+        data['is_premium'] = data['is_premium'] ?? 0;
+
+        return data;
       }
+
+      return null;
     } catch (e) {
       print('❌ Error fetching user data: $e');
       return null;

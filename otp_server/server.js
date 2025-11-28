@@ -9,6 +9,9 @@ console.log("OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? "✅ Loaded" : "❌ 
 const ZEN_QUOTES_URL = "https://zenquotes.io/api/random";
 const multer = require("multer");
 const path = require("path");
+const Stripe = require("stripe");
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -79,8 +82,106 @@ db.run(`
   )
 `);
 
+db.run(`
+    CREATE TABLE IF NOT EXISTS transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      stripe_payment_intent_id TEXT UNIQUE,
+      amount REAL NOT NULL,
+      currency TEXT DEFAULT 'usd',
+      status TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+`);
+
+db.run(`
+    CREATE TABLE IF NOT EXISTS insights (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      category TEXT NOT NULL,
+      date TEXT NOT NULL,
+      url TEXT,
+      image_url TEXT,
+      full_content TEXT
+    )
+  `);
 
 const app = express();
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  console.log('🔔 Webhook received');
+
+  try {
+    const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    
+    console.log(`✅ Event type: ${event.type}`);
+
+    if (event.type === 'payment_intent.succeeded') {
+      const paymentIntent = event.data.object;
+      const userId = paymentIntent.metadata.user_id;
+
+      console.log(`💰 Payment succeeded for user ${userId}`);
+
+      db.run(
+        'UPDATE users SET is_premium = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [userId],
+        function(err) {
+          if (err) {
+            console.error('❌ Database error:', err);
+          } else {
+            console.log(`✅ Updated ${this.changes} rows`);
+          }
+        }
+      );
+
+      db.run(
+        'UPDATE transactions SET status = ? WHERE stripe_payment_intent_id = ?',
+        ['completed', paymentIntent.id],
+        function(err) {
+          if (err) console.error('❌ Transaction update error:', err);
+        }
+      );
+    }
+
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const userId = session.metadata.user_id;
+
+      console.log(`💳 Checkout completed for user ${userId}`);
+
+      db.run(
+        'UPDATE users SET is_premium = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [userId],
+        function(err) {
+          if (err) {
+            console.error('❌ Database error:', err);
+          } else {
+            console.log(`✅ Updated ${this.changes} rows`);
+          }
+        }
+      );
+
+      db.run(
+        `INSERT INTO transactions (user_id, stripe_checkout_session_id, amount, currency, status)
+         VALUES (?, ?, ?, ?, ?)`,
+        [userId, session.id, session.amount_total, session.currency, 'completed'],
+        function(err) {
+          if (err) console.error('❌ Transaction insert error:', err);
+        }
+      );
+    }
+
+    res.json({ received: true });
+  } catch (err) {
+    console.error('❌ Webhook error:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+});
+
 app.use(cors());
 app.use(bodyParser.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -465,7 +566,7 @@ app.get('/user', (req, res) => {
   
   console.log(`🔍 Looking up user with email: ${email}`);
   
-  db.get('SELECT id, name, surname, email FROM users WHERE email = ?', [email], (err, row) => {
+  db.get('SELECT id, name, surname, email, is_premium FROM users WHERE email = ?', [email], (err, row) => {
     if (err) {
       console.error('❌ Database error:', err.message);
       return res.status(500).json({ error: 'Database error', details: err.message });
@@ -666,14 +767,37 @@ app.patch('/api/entries/:date/diary', (req, res) => {
   });
 });
 
+const getUserStatus = (userId) => {
+  return new Promise((resolve, reject) => {
+    db.get(
+      `SELECT is_premium FROM users WHERE id = ?`,
+      [userId],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row?.is_premium === 1); 
+      }
+    );
+  });
+};
+
+app.get('/api/user/:id/status', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const isPremium = await getUserStatus(userId);
+
+    res.json({ is_premium: isPremium });
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, conversationId, userId } = req.body;
+    if (!message) return res.status(400).json({ error: 'Message is required' });
 
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
+    const isPremium = userId ? await getUserStatus(userId) : false;
 
     const getHistory = () => {
       return new Promise((resolve, reject) => {
@@ -682,26 +806,28 @@ app.post('/api/chat', async (req, res) => {
            WHERE conversation_id = ? AND user_id = ?
            ORDER BY timestamp ASC`,
           [conversationId, userId],
-          (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows || []);
-          }
+          (err, rows) => (err ? reject(err) : resolve(rows || []))
         );
       });
     };
 
     const history = await getHistory();
 
+    const baseSystemPrompt = `
+      You are a supportive assistant for a mental wellbeing app.
+      Help users reflect, express feelings, and grow emotionally.
+      Reply kindly, ask meaningful questions, and offer grounding suggestions.
+    `;
+
+    const premiumAddition = `
+      Since this user is a premium member, provide deeper emotional insights,
+      more personalized coping strategies, and extended reflective analysis.
+    `;
+
     const messages = [
-      {
-        role: 'system',
-        content: 'You are a helpful, empathetic assistant for a mind tracker app. Help users reflect on their thoughts, feelings, and mental wellbeing. Be supportive, understanding, and provide thoughtful insights.'
-      },
+      { role: "system", content: isPremium ? baseSystemPrompt + premiumAddition : baseSystemPrompt },
       ...history,
-      {
-        role: 'user',
-        content: message
-      }
+      { role: "user", content: message }
     ];
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -711,46 +837,35 @@ app.post('/api/chat', async (req, res) => {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500
+        model: isPremium ? 'gpt-4.1' : 'gpt-3.5-turbo',  
+        messages,
+        temperature: isPremium ? 0.9 : 0.6,
+        max_tokens: isPremium ? 1200 : 400              
       })
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'OpenAI API error');
-    }
 
     const data = await response.json();
     const aiMessage = data.choices[0].message.content;
 
-    if (userId) {
-      db.run(
-        `INSERT INTO conversations (user_id, conversation_id, role, content) VALUES (?, ?, ?, ?)`,
-        [userId, conversationId, 'user', message]
-      );
+    db.run(`INSERT INTO conversations (user_id, conversation_id, role, content) VALUES (?, ?, ?, ?)`,
+      [userId, conversationId, 'user', message]);
+    db.run(`INSERT INTO conversations (user_id, conversation_id, role, content) VALUES (?, ?, ?, ?)`,
+      [userId, conversationId, 'assistant', aiMessage]);
 
-      db.run(
-        `INSERT INTO conversations (user_id, conversation_id, role, content) VALUES (?, ?, ?, ?)`,
-        [userId, conversationId, 'assistant', aiMessage]
-      );
-    }
-
-    res.json({
-      message: aiMessage,
-      conversationId: conversationId
+    res.json({ 
+      message: aiMessage, 
+      conversationId 
     });
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error("Chat Error:", error);
     res.status(500).json({ 
-      error: 'Failed to get AI response',
+      error: "Failed to get AI response", 
       details: error.message 
     });
   }
 });
+
 
 app.get('/api/conversations/:userId', (req, res) => {
   const { userId } = req.params;
@@ -921,6 +1036,320 @@ app.get('/api/music/:filename', (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.post('/api/create-payment-intent', async (req, res) => {
+  try {
+    const { user_id, amount, currency } = req.body;
+
+    const user = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM users WHERE id = ?', [user_id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let customerId = user.stripe_customer_id;
+    
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { user_id: user_id.toString() },
+      });
+      customerId = customer.id;
+
+      await new Promise((resolve, reject) => {
+        db.run(
+          'UPDATE users SET stripe_customer_id = ? WHERE id = ?',
+          [customerId, user_id],
+          (err) => err ? reject(err) : resolve()
+        );
+      });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: currency || 'usd',
+      customer: customerId,
+      metadata: { user_id: user_id.toString() },
+      automatic_payment_methods: { enabled: true },
+    });
+
+    // Create transaction record
+    await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO transactions (user_id, stripe_payment_intent_id, amount, currency, status)
+         VALUES (?, ?, ?, ?, ?)`,
+        [user_id, paymentIntent.id, amount, currency || 'usd', 'pending'],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/create-checkout-session', async (req, res) => {
+  const { user_id, amount, currency } = req.body;
+
+  try {
+    const domain = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: currency || 'usd',
+            product_data: {
+              name: 'Premium Subscription',
+            },
+            unit_amount: amount, 
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${domain}/premium-upgrade?session_id={CHECKOUT_SESSION_ID}`, 
+      cancel_url: `${domain}/payment-cancel`,
+      metadata: {
+        user_id: user_id.toString(),
+      },
+    });
+
+    res.json({ url: session.url, sessionId: session.id });
+  } catch (error) {
+    console.error('Checkout session error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/verify-checkout-session/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    const userId = session.metadata.user_id;
+    const user = await new Promise((resolve, reject) => {
+      db.get('SELECT is_premium FROM users WHERE id = ?', [userId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    res.json({
+      success: session.payment_status === 'paid',
+      is_premium: Boolean(user?.is_premium),
+      payment_status: session.payment_status,
+    });
+  } catch (error) {
+    console.error('Checkout verification error:', error);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+app.post('/api/verify-payment', async (req, res) => {
+  try {
+    const { payment_intent_id } = req.body;
+
+    if (!payment_intent_id) {
+      return res.status(400).json({ error: 'Payment intent ID is required' });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id);
+    const userId = paymentIntent.metadata.user_id;
+
+    const user = await new Promise((resolve, reject) => {
+      db.get('SELECT is_premium FROM users WHERE id = ?', [userId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    res.json({
+      success: paymentIntent.status === 'succeeded',
+      is_premium: Boolean(user?.is_premium),
+      status: paymentIntent.status,
+    });
+  } catch (error) {
+    console.error('Verification error:', error);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+app.get('/api/premium-status/:userId', (req, res) => {
+  const { userId } = req.params;
+
+  db.get(
+    'SELECT is_premium, premium_expires_at FROM users WHERE id = ?',
+    [userId],
+    (err, row) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      if (!row) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      res.json({
+        is_premium: Boolean(row.is_premium),
+        premium_expires_at: row.premium_expires_at,
+      });
+    }
+  );
+});
+
+async function fetchNHSInsights() {
+  try {
+    const topics = ['anxiety', 'depression', 'stress', 'mindfulness', 'sleep'];
+    const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+    
+    const response = await axios.get(
+      `https://api.nhs.uk/conditions/?category=mental-health&search=${randomTopic}`,
+      {
+        headers: {
+          'subscription-key': process.env.NHS_API_KEY || 'your-api-key-here'
+        }
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching NHS data:', error.message);
+
+    return getMockInsights();
+  }
+}
+
+function getMockInsights() {
+  return [
+    {
+      name: 'Managing Daily Stress',
+      description: 'Learn effective techniques to manage stress in your daily life, including breathing exercises and mindfulness practices.',
+      url: 'https://www.nhs.uk/mental-health/self-help/guides-tools-and-activities/tips-to-reduce-stress/',
+      category: 'Stress Management',
+      fullContent: 'Stress is a natural response to challenging situations. Here are evidence-based techniques: 1) Practice deep breathing for 5 minutes daily. 2) Engage in regular physical activity. 3) Maintain a consistent sleep schedule. 4) Connect with supportive friends and family. 5) Set realistic goals and priorities.'
+    },
+    {
+      name: 'Better Sleep Hygiene',
+      description: 'Discover how to improve your sleep quality through proven sleep hygiene practices and routine building.',
+      url: 'https://www.nhs.uk/live-well/sleep-and-tiredness/how-to-get-to-sleep/',
+      category: 'Sleep & Wellbeing',
+      fullContent: 'Quality sleep is essential for mental health. Key practices include: keeping a regular sleep schedule, creating a relaxing bedtime routine, making your bedroom comfortable and cool, avoiding caffeine and screens before bed, and getting regular exercise during the day.'
+    },
+    {
+      name: 'Mindfulness for Beginners',
+      description: 'An introduction to mindfulness meditation and its benefits for mental wellbeing and emotional regulation.',
+      url: 'https://www.nhs.uk/mental-health/self-help/tips-and-support/mindfulness/',
+      category: 'Mindfulness',
+      fullContent: 'Mindfulness means paying attention to the present moment without judgment. Start with just 5 minutes daily: find a quiet space, focus on your breath, notice when your mind wanders, and gently return attention to breathing. Regular practice can reduce anxiety and improve emotional wellbeing.'
+    }
+  ];
+}
+
+app.get('/api/insights/:date', async (req, res) => {
+  const { date } = req.params;
+
+  db.all(
+    'SELECT * FROM insights WHERE date = ? LIMIT 3',
+    [date],
+    async (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+
+      if (rows.length === 0) {
+        const nhsData = await fetchNHSInsights();
+        const insights = Array.isArray(nhsData) ? nhsData : getMockInsights();
+        const insightsToStore = insights.slice(0, 3);
+
+        const stmt = db.prepare(`
+          INSERT INTO insights (title, description, category, date, url, full_content)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `);
+
+        const storedInsights = [];
+        for (const insight of insightsToStore) {
+          await new Promise((resolve, reject) => {
+            stmt.run(
+              insight.name || insight.title,
+              insight.description,
+              insight.category || 'Mental Health',
+              date,
+              insight.url,
+              insight.fullContent || insight.description,
+              function(err) {
+                if (err) reject(err);
+                else {
+                  storedInsights.push({
+                    id: this.lastID,
+                    title: insight.name || insight.title,
+                    description: insight.description,
+                    category: insight.category || 'Mental Health',
+                    date: date,
+                    url: insight.url,
+                    fullContent: insight.fullContent || insight.description
+                  });
+                  resolve();
+                }
+              }
+            );
+          });
+        }
+
+        stmt.finalize();
+        return res.json(storedInsights);
+      }
+
+      res.json(rows);
+    }
+  );
+});
+
+app.get('/api/insight/:id', (req, res) => {
+  const { id } = req.params;
+
+  db.get(
+    'SELECT * FROM insights WHERE id = ?',
+    [id],
+    (err, row) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      if (!row) {
+        return res.status(404).json({ error: 'Insight not found' });
+      }
+      res.json(row);
+    }
+  );
+});
+
+app.delete('/api/insights/cleanup', (req, res) => {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 30);
+  const dateString = cutoffDate.toISOString().split('T')[0];
+
+  db.run(
+    'DELETE FROM insights WHERE date < ?',
+    [dateString],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ deleted: this.changes });
+    }
+  );
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
